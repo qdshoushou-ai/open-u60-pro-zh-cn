@@ -36,32 +36,32 @@
     if (next) status = next;
     if (!status) return;
     const current = status.current || {}, progress = status.progress || {};
-    $('update-current-version').textContent = current.version ? `v${current.version}` : 'Unknown';
-    $('update-current-commit').textContent = [current.commit,current.target].filter(Boolean).join(' · ') || 'Build details unavailable';
-    $('update-channel-state').textContent = status.channel === 'beta' ? 'Beta' : 'Stable';
-    $('update-check-time').textContent = status.last_check ? `Last checked ${new Date(status.last_check * 1000).toLocaleString()}` : 'Not checked yet';
-    $('update-phase').textContent = status.trial_in_progress ? 'Health trial' : title(status.phase);
+    $('update-current-version').textContent = current.version ? `v${current.version}` : '未知';
+    $('update-current-commit').textContent = [current.commit,current.target].filter(Boolean).join(' · ') || '构建详情不可用';
+    $('update-channel-state').textContent = status.channel === 'beta' ? 'Beta' : '稳定版';
+    $('update-check-time').textContent = status.last_check ? `上次检查 ${new Date(status.last_check * 1000).toLocaleString()}` : '尚未检查';
+    $('update-phase').textContent = status.trial_in_progress ? '健康试运行' : ({idle:'空闲',checking:'检查中',downloading:'下载中',staged:'已暂存',installing:'安装中',rolling_back:'回滚中',failed:'失败'}[status.phase] || title(status.phase));
     const readiness = status.install_readiness || {};
-    $('update-ready').textContent = readiness.ready ? 'Ready' : 'Waiting';
-    const battery = numeric(readiness.battery_percent) ? `${readiness.battery_percent}%${readiness.external_power ? ' · charging' : ''}` : 'battery unavailable';
-    const signalValue = numeric(readiness.signal_bars) && readiness.signal_bars > 0 ? ` · ${readiness.signal_bars} bar${readiness.signal_bars === 1 ? '' : 's'}` : numeric(readiness.signal_dbm) ? ` · ${readiness.signal_dbm} dBm` : '';
-    const signal = readiness.network_type ? `${readiness.network_type}${signalValue}` : 'cellular unavailable';
-    $('update-ready-detail').textContent = readiness.reason || `${battery} · ${signal} · WAN online`;
-    $('update-guard').textContent = status.bootstrap_ready ? 'A/B recovery ready' : 'Bootstrap required';
-    $('update-slot').textContent = status.active_slot ? `Active slot ${status.active_slot.toUpperCase()} · agent-only restart` : 'Install once over SSH to enable OTA';
+    $('update-ready').textContent = readiness.ready ? '就绪' : '等待中';
+    const battery = numeric(readiness.battery_percent) ? `${readiness.battery_percent}%${readiness.external_power ? ' · 充电中' : ''}` : '电池不可用';
+    const signalValue = numeric(readiness.signal_bars) && readiness.signal_bars > 0 ? ` · ${readiness.signal_bars} 格信号` : numeric(readiness.signal_dbm) ? ` · ${readiness.signal_dbm} dBm` : '';
+    const signal = readiness.network_type ? `${readiness.network_type}${signalValue}` : '蜂窝网络不可用';
+    $('update-ready-detail').textContent = readiness.reason || `${battery} · ${signal} · WAN 在线`;
+    $('update-guard').textContent = status.bootstrap_ready ? 'A/B 恢复已就绪' : '需要引导安装';
+    $('update-slot').textContent = status.active_slot ? `活动槽位 ${status.active_slot.toUpperCase()} · 仅重启 Agent` : '需通过 SSH 安装一次以启用 OTA';
     const release = status.available, staged = status.staged;
-    $('update-state-detail').textContent = status.last_error || (!status.signing_configured ? 'This development build has no release verification key.' : staged ? `v${staged.version} is verified and staged.` : release ? `v${release.version} is ready to download.` : 'No newer signed release reported.');
+    $('update-state-detail').textContent = status.last_error || (!status.signing_configured ? '此开发构建没有版本校验密钥。' : staged ? `v${staged.version} 已校验并暂存。` : release ? `可以下载 v${release.version}。` : '未上报更新的已签名版本。');
     $('update-release').hidden = !release;
     if (release) {
-      $('update-available-version').textContent = `v${release.version}${staged?.version === release.version ? ' · STAGED' : ''}`;
-      $('update-release-copy').textContent = release.channel === 'beta' ? 'Signed Beta release. Review the notes before installing.' : 'Signed Stable release available for this device.';
+      $('update-available-version').textContent = `v${release.version}${staged?.version === release.version ? ' · 已暂存' : ''}`;
+      $('update-release-copy').textContent = release.channel === 'beta' ? '已签名的 Beta 版本。安装前请查看版本说明。' : '此设备有可用的已签名稳定版。';
       $('update-notes').href = release.notes_url;
     }
     const {total,received,percent,verifying} = progressValue(progress,status.phase);
     $('update-progress').hidden = status.phase !== 'downloading' && !(total && received);
     OpenU60Numbers.set($('update-percent'),percent);
     $('update-progress-bar').style.width = `${percent}%`;
-    $('update-bytes').textContent = verifying ? `${bytes(total)} received · verifying signed binary…` : status.phase === 'staged' && received >= total ? `${bytes(total)} downloaded and verified` : `${bytes(received)} of ${bytes(total)} downloaded`;
+    $('update-bytes').textContent = verifying ? `已接收 ${bytes(total)} · 正在校验已签名二进制文件…` : status.phase === 'staged' && received >= total ? `已下载并校验 ${bytes(total)}` : `已下载 ${bytes(received)}（共 ${bytes(total)}）`;
     if (!fields.matches(':focus-within') && !busy) {
       channel.value = status.settings?.channel || status.channel || 'stable';
       autoCheck.checked = status.settings?.automatic_checks !== false;
@@ -78,18 +78,18 @@
   form.addEventListener('input',()=>{ save.disabled = busy || currentSettings() === baseline; });
   form.addEventListener('submit',async event => {
     event.preventDefault();
-    if (channel.value === 'beta' && status?.settings?.channel !== 'beta' && !await UI.confirm('Use the Beta channel?','Beta releases arrive earlier and may be less tested. Every release is still signed and protected by automatic rollback.',{label:'Use Beta'})) return;
-    await action('Saving update preferences…','Preferences saved.',()=>UI.request('/api/update/settings',UI.json('PUT',JSON.parse(currentSettings()))));
+    if (channel.value === 'beta' && status?.settings?.channel !== 'beta' && !await UI.confirm('使用 Beta 通道？','Beta 版本发布更早，可能测试较少。每个版本仍然经过签名，并受自动回滚保护。',{label:'使用 Beta'})) return;
+    await action('正在保存更新偏好…','更新偏好已保存。',()=>UI.request('/api/update/settings',UI.json('PUT',JSON.parse(currentSettings()))));
   });
-  check.addEventListener('click',()=>action('Checking signed release channels…','Signed release check complete.',()=>UI.request('/api/update/check',{method:'POST',timeoutMs:360000})));
-  download.addEventListener('click',()=>action('Downloading and verifying the inactive slot…','Release downloaded, verified and staged.',()=>UI.request('/api/update/download',{method:'POST',timeoutMs:360000})));
+  check.addEventListener('click',()=>action('正在检查已签名版本通道…','已签名版本检查完成。',()=>UI.request('/api/update/check',{method:'POST',timeoutMs:360000})));
+  download.addEventListener('click',()=>action('正在下载并校验非活动槽位…','版本已下载、校验并暂存。',()=>UI.request('/api/update/download',{method:'POST',timeoutMs:360000})));
   install.addEventListener('click',async()=>{
-    if (!await UI.confirm('Install the staged agent?',`Install v${status?.staged?.version || ''} and restart only the agent? The console reconnects after a 60-second health trial. Wi-Fi and cellular stay online.`,{label:'Install agent'})) return;
-    await action('Handing off to the update supervisor…','Agent restart accepted. This console will reconnect automatically.',()=>UI.request('/api/update/install',UI.json('POST',{confirm:true})));
+    if (!await UI.confirm('安装已暂存的 Agent？',`安装 v${status?.staged?.version || ''} 并仅重启 Agent？控制台将在 60 秒健康试运行后重新连接。Wi-Fi 与蜂窝网络保持在线。`,{label:'安装 Agent'})) return;
+    await action('正在交由更新监督程序处理…','已接受 Agent 重启请求。此控制台将自动重新连接。',()=>UI.request('/api/update/install',UI.json('POST',{confirm:true})));
   });
   rollback.addEventListener('click',async()=>{
-    if (!await UI.confirm('Return to the previous agent?','Restart the agent from its other verified slot. Wi-Fi and cellular stay online.',{label:'Return to previous'})) return;
-    await action('Starting protected rollback…','Rollback accepted. This console will reconnect automatically.',()=>UI.request('/api/update/rollback',UI.json('POST',{confirm:true})));
+    if (!await UI.confirm('回退到上一个 Agent？','从另一个已验证槽位重启 Agent。Wi-Fi 与蜂窝网络保持在线。',{label:'回退到上一个版本'})) return;
+    await action('正在启动受保护的回滚…','已接受回滚请求。此控制台将自动重新连接。',()=>UI.request('/api/update/rollback',UI.json('POST',{confirm:true})));
   });
   async function action(working,done,request) {
     if (busy) return;
@@ -102,10 +102,10 @@
   window.addEventListener('dashboard:readings',event=>{
     const reading = event.detail.readings?.ota_status;
     if (reading?.ok) render(reading.data);
-    else if (reading && !reading.ok) UI.say(feedback,'Live update status is unavailable.',true);
+    else if (reading && !reading.ok) UI.say(feedback,'实时更新状态不可用。',true);
   });
   window.addEventListener('dashboard:locked',()=>{
     status = null; baseline = ''; fields.disabled = true; save.disabled = check.disabled = download.disabled = install.disabled = rollback.disabled = true;
-    UI.say(feedback,'Unlock the console to read update status.');
+    UI.say(feedback,'解锁控制台后可读取更新状态。');
   });
 })();

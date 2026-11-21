@@ -23,7 +23,7 @@
     return result;
   }
   function bytes(value){const amount=Number(value)||0;if(amount<1024)return `${amount} B`;const units=['KB','MB','GB','TB'];let scaled=amount,index=-1;do{scaled/=1024;index++;}while(scaled>=1024&&index<units.length-1);return `${scaled>=100?scaled.toFixed(0):scaled>=10?scaled.toFixed(1):scaled.toFixed(2)} ${units[index]}`;}
-  function handshake(seconds,now=Math.floor(Date.now()/1000)){if(!Number.isFinite(Number(seconds))||Number(seconds)<=0)return 'No handshake yet';const age=Math.max(0,now-Number(seconds));if(age<60)return `${age}s ago`;if(age<3600)return `${Math.floor(age/60)}m ago`;if(age<86400)return `${Math.floor(age/3600)}h ago`;return `${Math.floor(age/86400)}d ago`;}
+  function handshake(seconds,now=Math.floor(Date.now()/1000)){if(!Number.isFinite(Number(seconds))||Number(seconds)<=0)return '尚无握手';const age=Math.max(0,now-Number(seconds));if(age<60)return `${age}s 前`;if(age<3600)return `${Math.floor(age/60)}m 前`;if(age<86400)return `${Math.floor(age/3600)}h 前`;return `${Math.floor(age/86400)}d 前`;}
   const api={inspect,bytes,handshake};
   if(typeof module==='object'&&module.exports)module.exports=api;else globalThis.OpenU60WireGuard=api;
 })(globalThis);

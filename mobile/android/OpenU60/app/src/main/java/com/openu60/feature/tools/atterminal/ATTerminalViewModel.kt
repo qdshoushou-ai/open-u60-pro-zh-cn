@@ -76,7 +76,7 @@ class ATTerminalViewModel @Inject constructor(
         val cmd = _state.value.currentCommand.trim()
         if (cmd.isEmpty()) return
         if (!cmd.uppercase().startsWith("AT")) {
-            addEntry(ATHistoryEntry(command = cmd, response = "Error: Command must start with AT", port = "", elapsedMs = 0, isError = true))
+            addEntry(ATHistoryEntry(command = cmd, response = "错误：命令必须以 AT 开头", port = "", elapsedMs = 0, isError = true))
             return
         }
         if (dangerousPatterns.any { cmd.uppercase().contains(it) }) {
@@ -112,9 +112,9 @@ class ATTerminalViewModel @Inject constructor(
                 addEntry(ATHistoryEntry(command = cmd, response = response, port = port, elapsedMs = elapsedMs))
             } catch (e: AgentError.Unauthorized) {
                 authManager.reauthenticate()
-                addEntry(ATHistoryEntry(command = cmd, response = "Error: Session expired", port = "", elapsedMs = 0, isError = true))
+                addEntry(ATHistoryEntry(command = cmd, response = "错误：会话已过期", port = "", elapsedMs = 0, isError = true))
             } catch (e: Exception) {
-                addEntry(ATHistoryEntry(command = cmd, response = "Error: ${e.message}", port = "", elapsedMs = 0, isError = true))
+                addEntry(ATHistoryEntry(command = cmd, response = "错误：${e.message}", port = "", elapsedMs = 0, isError = true))
             }
             _state.value = _state.value.copy(isLoading = false)
         }

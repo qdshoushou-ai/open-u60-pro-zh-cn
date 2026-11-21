@@ -43,7 +43,7 @@ pub(crate) fn read(state: &AppState, name: &str) -> Value {
         "upnp_config" => router::router_firewall_upnp_get(state).1,
         "port_rules" => router::router_firewall_port_forward_get(state).1,
         "qos_config" => router::router_qos_get(state).1,
-        _ => json!({"ok":false,"error":"unknown dashboard topic"}),
+        _ => json!({"ok":false,"error":"未知的仪表盘主题"}),
     }
 }
 

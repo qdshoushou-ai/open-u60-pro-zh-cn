@@ -30,7 +30,7 @@ fun QoSScreen(
                 title = { Text("QoS") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
             )
@@ -71,9 +71,9 @@ fun QoSScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column {
-                            Text("Quality of Service", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("服务质量", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text(
-                                "Prioritize traffic for better performance",
+                                "为流量设置优先级以提升性能",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

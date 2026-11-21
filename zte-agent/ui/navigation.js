@@ -8,51 +8,51 @@
     settings: '<path d="m10 3-1 3-3 1-3 3 2 3-1 3 3 3 3-1 3 2 3-3 1-3 3-1-1-4-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>'
   };
   const groups = [
-    {id:'dashboard',label:'Dashboard',pages:[
-      {id:'overview',label:'Overview',title:'Router overview',description:'A clear view of your connection and the devices on it.'},
-      {id:'history',label:'Connection history',title:'Connection history',description:'Interruptions and recovery observed during this tab session.'}
+    {id:'dashboard',label:'仪表盘',pages:[
+      {id:'overview',label:'概览',title:'路由器概览',description:'清晰查看你的连接状态与接入设备。'},
+      {id:'history',label:'连接历史',title:'连接历史',description:'本标签页会话期间观察到的中断与恢复。'}
     ]},
-    {id:'network',label:'Network',pages:[
-      {id:'signal',label:'Signal & Cells',title:'Signal & Cells',description:'Every reported LTE and NR carrier, with clear SA and NSA status.'},
-      {id:'wifi',label:'Wi-Fi',title:'Wi-Fi networks',description:'Your local wireless networks and radio status.'},
-      {id:'clients',label:'Connected Devices',title:'Connected devices',description:'Your devices, live traffic, observed peaks and reported speed limits.'},
-      {id:'dns',label:'DNS & Privacy',title:'DNS & privacy',description:'Choose how names are resolved, test encrypted DNS and recover safely from bad settings.'},
-      {id:'dns-cache',label:'Live DNS Cache',title:'Live DNS cache',description:'Watch answers enter the router cache, count down and disappear when they expire.'},
-      {id:'vpn',label:'WireGuard VPN',title:'WireGuard VPN',description:'Import a split-tunnel profile and inspect native kernel handshakes and traffic.'},
-      {id:'lan',label:'LAN & DHCP',title:'LAN & DHCP',description:'The router’s local address and the addresses it assigns to your devices.'},
-      {id:'firewall',label:'Firewall & DMZ',title:'Firewall & DMZ',description:'Control inbound protection, address translation and automatic port access.'},
-      {id:'ports',label:'Port forwarding',title:'Port forwarding',description:'Direct specific incoming connections to a device on your local network.'},
-      {id:'qos',label:'Quality of service',title:'Quality of service',description:'Manage the router’s built-in traffic prioritization.'},
-      {id:'mobile',label:'Mobile Network',title:'Mobile network',description:'The cellular data connection and modem radio state.'},
-      {id:'ttl',label:'Packet TTL',title:'Packet TTL',description:'Adjust outbound IPv4 TTL and IPv6 hop limit on the cellular software path.'},
-      {id:'esim',label:'eSIM management',title:'eSIM management',description:'Profiles, activation codes and connection status for the eSIM card in your router.'},
-      {id:'operators',label:'Network operators',title:'Network operators',description:'Find available mobile networks and choose automatic or manual registration.'},
-      {id:'apn',label:'APN profiles',title:'APN profiles',description:'Manage the access-point profiles used for mobile data.'},
-      {id:'bands',label:'Bands & Cell Lock',title:'Bands & Cell Lock',description:'Choose preferred LTE and NR bands or a specific serving cell.'}
+    {id:'network',label:'网络',pages:[
+      {id:'signal',label:'信号与小区',title:'信号与小区',description:'每个已上报的 LTE 与 NR 载波，并清晰显示 SA 与 NSA 状态。'},
+      {id:'wifi',label:'Wi-Fi',title:'Wi-Fi 网络',description:'你的本地无线网络与射频状态。'},
+      {id:'clients',label:'已连接设备',title:'已连接设备',description:'你的设备、实时流量、观察到的峰值与上报的速率限制。'},
+      {id:'dns',label:'DNS 与隐私',title:'DNS 与隐私',description:'选择域名解析方式，测试加密 DNS，并在设置异常时安全恢复。'},
+      {id:'dns-cache',label:'实时 DNS 缓存',title:'实时 DNS 缓存',description:'观察应答进入路由器缓存、倒计时，并在过期时消失。'},
+      {id:'vpn',label:'WireGuard VPN',title:'WireGuard VPN',description:'导入分流隧道配置，并查看原生内核握手与流量。'},
+      {id:'lan',label:'局域网与 DHCP',title:'局域网与 DHCP',description:'路由器的本地地址以及它分配给你设备的地址。'},
+      {id:'firewall',label:'防火墙与 DMZ',title:'防火墙与 DMZ',description:'控制入站防护、地址转换与自动端口放行。'},
+      {id:'ports',label:'端口转发',title:'端口转发',description:'将特定的入站连接转发到本地网络中的某台设备。'},
+      {id:'qos',label:'服务质量（QoS）',title:'服务质量（QoS）',description:'管理路由器内置的流量优先级。'},
+      {id:'mobile',label:'移动网络',title:'移动网络',description:'蜂窝数据连接与调制解调器射频状态。'},
+      {id:'ttl',label:'数据包 TTL',title:'数据包 TTL',description:'调整蜂窝软件路径上出站 IPv4 TTL 与 IPv6 跳数限制。'},
+      {id:'esim',label:'eSIM 管理',title:'eSIM 管理',description:'路由器中 eSIM 卡的配置文件、激活码与连接状态。'},
+      {id:'operators',label:'网络运营商',title:'网络运营商',description:'查找可用的移动网络，并选择自动或手动注册。'},
+      {id:'apn',label:'APN 配置',title:'APN 配置',description:'管理用于移动数据的接入点配置。'},
+      {id:'bands',label:'频段与锁小区',title:'频段与锁小区',description:'选择首选 LTE 与 NR 频段或指定服务小区。'}
     ]},
-    {id:'sms',label:'SMS',pages:[
-      {id:'inbox',label:'Messages',title:'Messages',description:'Read, reply to and manage messages on your router and SIM.'},
-      {id:'compose',label:'Compose',title:'New message',description:'Send a text message through the router’s SIM.'},
-      {id:'forwarding',label:'Forwarding rules',title:'SMS forwarding',description:'Route incoming messages to the destinations you choose.'},
-      {id:'storage',label:'Message storage',title:'Message storage',description:'Capacity and unread message counts reported by the modem.'}
+    {id:'sms',label:'短信',pages:[
+      {id:'inbox',label:'消息',title:'消息',description:'阅读、回复并管理路由器与 SIM 卡上的消息。'},
+      {id:'compose',label:'新建消息',title:'新消息',description:'通过路由器的 SIM 卡发送短信。'},
+      {id:'forwarding',label:'转发规则',title:'短信转发',description:'将收到的消息转发到你选择的目的地。'},
+      {id:'storage',label:'消息存储',title:'消息存储',description:'调制解调器上报的容量与未读消息数。'}
     ]},
-    {id:'tools',label:'Tools',pages:[
-      {id:'device',label:'Device Info',title:'Device information',description:'System details reported by the on-device agent.'},
-      {id:'battery',label:'Battery & Power',title:'Battery & power',description:'Battery condition, charging, runtime estimates and measured power.'},
-      {id:'diagnostics',label:'System diagnostics',title:'System diagnostics',description:'Live resource use, temperatures, processes and interface details.'},
-      {id:'radio',label:'Radio diagnostics',title:'Radio diagnostics',description:'Inspect neighboring cells and run a signal quality sweep.'},
-      {id:'speedtest',label:'Internet speed test',title:'Internet speed test',description:'Measure the router’s internet connection, with live progress.'},
-      {id:'data',label:'Data usage',title:'Data usage',description:'Track router-measured usage and set a monthly allowance, warning and billing cycle.'},
-      {id:'terminal',label:'AT terminal',title:'AT terminal',description:'Send an explicit modem command and inspect its response.'},
-      {id:'traffic',label:'Traffic monitor',title:'Traffic monitor',description:'Live transfer rates and interface totals, streamed from the router.'}
+    {id:'tools',label:'工具',pages:[
+      {id:'device',label:'设备信息',title:'设备信息',description:'设备端 Agent 上报的系统详情。'},
+      {id:'battery',label:'电池与电源',title:'电池与电源',description:'电池状况、充电状态、运行时间估算与实测功率。'},
+      {id:'diagnostics',label:'系统诊断',title:'系统诊断',description:'实时资源占用、温度、进程与接口详情。'},
+      {id:'radio',label:'无线诊断',title:'无线诊断',description:'检查邻区并运行信号质量扫描。'},
+      {id:'speedtest',label:'网速测试',title:'网速测试',description:'测量路由器的互联网连接，并实时显示进度。'},
+      {id:'data',label:'流量统计',title:'流量统计',description:'跟踪路由器统计的流量，并设置每月流量上限、预警与计费周期。'},
+      {id:'terminal',label:'AT 终端',title:'AT 终端',description:'发送明确的调制解调器命令并查看其响应。'},
+      {id:'traffic',label:'流量监控',title:'流量监控',description:'实时传输速率与接口累计流量，由路由器推送。'}
     ]},
-    {id:'settings',label:'Settings',pages:[
-      {id:'device',label:'Device & Power',title:'Device & power',description:'Charging, power settings and device maintenance.'},
-      {id:'https',label:'HTTPS & Install',title:'HTTPS & install',description:'Secure local access and install this console on your devices.'},
-      {id:'appearance',label:'Appearance',title:'Appearance',description:'A comfortable view, in any light.'},
-      {id:'connection',label:'Console connection',title:'Console connection',description:'Connection status and access to this local console.'},
-      {id:'update',label:'Agent Update',title:'Agent update',description:'Signed Stable and Beta releases with automatic rollback protection.'},
-      {id:'about',label:'About',title:'About OpenU60',description:'A local console for your ZTE U60 Pro.'}
+    {id:'settings',label:'设置',pages:[
+      {id:'device',label:'设备与电源',title:'设备与电源',description:'充电、电源设置与设备维护。'},
+      {id:'https',label:'HTTPS 与安装',title:'HTTPS 与安装',description:'安全本地访问，并将此控制台安装到你的设备。'},
+      {id:'appearance',label:'外观',title:'外观',description:'无论环境光线如何，都能舒适查看。'},
+      {id:'connection',label:'控制台连接',title:'控制台连接',description:'连接状态以及对此本地控制台的访问。'},
+      {id:'update',label:'Agent 更新',title:'Agent 更新',description:'已签名的稳定版与 Beta 版本，并具备自动回滚保护。'},
+      {id:'about',label:'关于',title:'关于 OpenU60',description:'适用于你的 ZTE U60 Pro 的本地控制台。'}
     ]}
   ];
   const aliases = {overview:'dashboard/overview',cellular:'network/signal',wireless:'network/wifi',devices:'network/clients',system:'tools/device'};
@@ -80,7 +80,7 @@
       navigationMotionTimer = setTimeout(()=>delete root.dataset.navigationMotion,320);
     } else delete root.dataset.navigationMotion;
     root.dataset.navigation = navigationCollapsed ? 'collapsed' : 'expanded';
-    const action = navigationCollapsed ? 'Expand navigation' : 'Collapse navigation';
+    const action = navigationCollapsed ? '展开导航' : '收起导航';
     sidebarToggle.setAttribute('aria-expanded',String(!navigationCollapsed));
     sidebarToggle.setAttribute('aria-label',action);
     sidebarToggle.title = action;
@@ -156,7 +156,7 @@
     document.title = `${current.page.title} · OpenU60`;
     const title = document.querySelector('#page-title');
     title.textContent = current.page.title;
-    const dot = document.createElement('span'); dot.textContent = '.'; title.append(dot);
+    const dot = document.createElement('span'); dot.textContent = '。'; title.append(dot);
     document.querySelector('#page-description').textContent = current.page.description;
     document.querySelector('#page-section').textContent = current.group.label.toUpperCase();
     document.querySelector('#breadcrumb-section').textContent = current.group.label;
@@ -176,10 +176,10 @@
     const subtabs = document.querySelector('#section-tabs'); subtabs.replaceChildren();
     const picker = document.createElement('label'); picker.className = 'section-tabs-picker';
     const pickerLabel = document.createElement('span'); pickerLabel.className = 'section-tabs-picker-label';
-    pickerLabel.textContent = `${current.group.label} pages`;
+    pickerLabel.textContent = `${current.group.label}页面`;
     const pickerControl = document.createElement('span'); pickerControl.className = 'section-tabs-picker-control';
     const select = document.createElement('select'); select.id = 'section-page-picker';
-    select.setAttribute('aria-label',`${current.group.label} pages`);
+    select.setAttribute('aria-label',`${current.group.label}页面`);
     const links = document.createElement('div'); links.className = 'section-tab-links';
     for (const page of current.group.pages) {
       const route = `${current.group.id}/${page.id}`;

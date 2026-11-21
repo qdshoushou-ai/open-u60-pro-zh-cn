@@ -127,12 +127,12 @@ fn fetch_servers() -> Result<Vec<TestServer>, String> {
     let resp = agent
         .get("https://www.speedtest.net/api/js/servers?engine=js&limit=20")
         .call()
-        .map_err(|e| format!("fetch servers: {e}"))?;
+        .map_err(|e| format!("获取服务器列表失败：{e}"))?;
 
     let data: Vec<Value> = resp
         .into_body()
         .read_json()
-        .map_err(|e| format!("parse servers: {e}"))?;
+        .map_err(|e| format!("解析服务器列表失败：{e}"))?;
 
     let mut servers = Vec::new();
     for entry in &data {
@@ -218,7 +218,7 @@ fn run_test(
     }
 
     if rtts.is_empty() {
-        set_error(progress, "all ping attempts failed");
+        set_error(progress, "所有 ping 尝试均失败");
         return;
     }
 
@@ -397,7 +397,7 @@ pub fn servers(state: &AppState) -> (u16, Value) {
 pub fn start(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     let server_id = parsed["server_id"].as_u64();
@@ -405,7 +405,7 @@ pub fn start(state: &AppState, body: &[u8]) -> (u16, Value) {
     // A running test is refused before anything is touched (a double start
     // must not wipe its progress or clear a pending stop).
     if state.speedtest.is_running() {
-        return (409, json!({"ok": false, "error": "test already running"}));
+        return (409, json!({"ok": false, "error": "测试已在运行"}));
     }
 
     let server_list = match get_servers(&state.speedtest.servers_cache) {
@@ -416,17 +416,17 @@ pub fn start(state: &AppState, body: &[u8]) -> (u16, Value) {
     let server = if let Some(id) = server_id {
         match server_list.iter().find(|s| s.id == id) {
             Some(s) => s.clone(),
-            None => return (404, json!({"ok": false, "error": "server not found"})),
+            None => return (404, json!({"ok": false, "error": "服务器未找到"})),
         }
     } else {
         match server_list.into_iter().next() {
             Some(s) => s,
-            None => return (503, json!({"ok": false, "error": "no servers available"})),
+            None => return (503, json!({"ok": false, "error": "没有可用的服务器"})),
         }
     };
 
     if !state.speedtest.prepare_run(format!("{} ({})", server.sponsor, server.name)) {
-        return (409, json!({"ok":false,"error":"test already running"}));
+        return (409, json!({"ok":false,"error":"测试已在运行"}));
     }
 
     let progress = Arc::clone(&state.speedtest.progress);
@@ -439,7 +439,7 @@ pub fn start(state: &AppState, body: &[u8]) -> (u16, Value) {
         }));
         // A panic would leave a running phase behind for good.
         if run.is_err() {
-            set_error(&progress, "speed test failed");
+            set_error(&progress, "网速测试失败");
         }
         running.store(false, Ordering::Relaxed);
     });
@@ -546,7 +546,7 @@ mod tests {
         app.speedtest.cancel.store(true, Ordering::SeqCst);
         test_sink::take();
         let (status, v) = start(&app, br#"{"server_id":7}"#);
-        assert_eq!((status, v["error"].as_str()), (409, Some("test already running")));
+        assert_eq!((status, v["error"].as_str()), (409, Some("测试已在运行")));
         let p = phase(&app);
         assert_eq!((p["phase"].as_str(), p["progress"].as_u64()), (Some("download"), Some(42)));
         assert!(app.speedtest.cancel.load(Ordering::SeqCst), "the stop was cleared");
@@ -610,7 +610,7 @@ mod tests {
         }
         let p = phase(&app);
         assert!(!app.speedtest.is_running());
-        assert_eq!((p["phase"].as_str(), p["error"].as_str()), (Some("error"), Some("all ping attempts failed")));
+        assert_eq!((p["phase"].as_str(), p["error"].as_str()), (Some("error"), Some("所有 ping 尝试均失败")));
         assert_eq!(p["server"], "Example Net (Testville)");
     }
 }

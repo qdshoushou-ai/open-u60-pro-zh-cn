@@ -83,8 +83,8 @@ const ISSUING_CRT: &str = "issuing.crt";
 const SERVER_KEY: &str = "server.key";
 const SERVER_CRT: &str = "server.crt";
 
-pub const CLOCK_UNSET: &str = "The router\u{2019}s clock isn\u{2019}t set yet, so no certificate can be dated. Try again once the router shows today\u{2019}s date (it sets its clock from the mobile network).";
-const NO_LAN_IP: &str = "The router\u{2019}s LAN address could not be read. Try again in a moment.";
+pub const CLOCK_UNSET: &str = "路由器的时钟尚未设置，因此无法为证书设定日期。请等路由器显示今天的日期后再试（它会从移动网络同步时钟）。";
+const NO_LAN_IP: &str = "无法读取路由器的 LAN 地址。请稍后重试。";
 
 /// The router's UTC (unix seconds) and how far it can be trusted.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -145,15 +145,15 @@ struct Ca {
 
 impl Ca {
     fn new(root: Vec<u8>, issuing: KeyCert) -> Result<Ca, String> {
-        let root_info = x509::parse(&root).ok_or("the CA certificate is unreadable")?;
-        let issuing_info = x509::parse(&issuing.cert).ok_or("the issuing CA certificate is unreadable")?;
+        let root_info = x509::parse(&root).ok_or("无法读取 CA 证书")?;
+        let issuing_info = x509::parse(&issuing.cert).ok_or("无法读取签发 CA 证书")?;
         if issuing_info.issuer != root_info.subject {
-            return Err("the certificates do not belong together".into());
+            return Err("这些证书不相互匹配".into());
         }
         if x509::key_point(&issuing.key).as_ref() != Some(&issuing_info.point) {
-            return Err("the issuing CA key does not match its certificate".into());
+            return Err("签发 CA 密钥与其证书不匹配".into());
         }
-        let scope = x509::scope(&issuing_info).ok_or("the issuing CA has no name constraints")?;
+        let scope = x509::scope(&issuing_info).ok_or("签发 CA 没有名称约束")?;
         Ok(Ca { sha256: x509::sha256_fingerprint(&root), sha1: x509::sha1_fingerprint(&root), root, root_info, issuing, issuing_info, scope })
     }
 
@@ -183,15 +183,15 @@ impl Loaded {
     /// rustls key for the listener (the server certificate, then the
     /// issuing CA's).
     fn new(ca: Arc<Ca>, server: &KeyCert) -> Result<(Loaded, Arc<CertifiedKey>), String> {
-        let server_info = x509::parse(&server.cert).ok_or("the server certificate is unreadable")?;
+        let server_info = x509::parse(&server.cert).ok_or("无法读取服务器证书")?;
         if server_info.issuer != ca.issuing_info.subject {
-            return Err("the server certificate is not the issuing CA's".into());
+            return Err("服务器证书不是由该签发 CA 签发的".into());
         }
         if x509::key_point(&server.key).as_ref() != Some(&server_info.point) {
-            return Err("the server key does not match its certificate".into());
+            return Err("服务器密钥与其证书不匹配".into());
         }
         let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(server.key.clone()));
-        let signer = rustls::crypto::ring::sign::any_ecdsa_type(&key).map_err(|_| "the server key is unusable")?;
+        let signer = rustls::crypto::ring::sign::any_ecdsa_type(&key).map_err(|_| "服务器密钥不可用")?;
         let chain = vec![CertificateDer::from(server.cert.clone()), CertificateDer::from(ca.issuing.cert.clone())];
         let certified = Arc::new(CertifiedKey::new(chain, signer));
         Ok((Loaded { ca, server_info }, certified))
@@ -293,10 +293,10 @@ fn lock(m: &Mutex<()>) -> MutexGuard<'_, ()> {
 }
 
 /// Settings' line when the files on disk cannot be used at all.
-const NEW_CA: &str = "Turn On HTTPS makes a new certificate authority, which each device must trust again; Reset HTTPS deletes these files.";
+const NEW_CA: &str = "开启 HTTPS 会创建新的证书颁发机构，每台设备都需要重新信任；重置 HTTPS 会删除这些文件。";
 /// Settings' line when the CA is fine but its server pair could not be
 /// issued again at start (no verified clock to date it).
-pub const NO_PAIR: &str = "The server certificate is missing or damaged, and the router\u{2019}s clock has not been checked over the internet yet. Turn On HTTPS issues a new one from the same certificate authority: devices that trust it need nothing new.";
+pub const NO_PAIR: &str = "服务器证书缺失或已损坏，且尚未通过互联网验证路由器的时钟。开启 HTTPS 会从同一证书颁发机构签发新证书：已信任该机构的设备无需任何操作。";
 
 impl Tls {
     /// The router's: `/data/zte-agent-tls`, dnsmasq, `br-lan`, the live
@@ -417,7 +417,7 @@ impl Tls {
         let ips: Vec<IpAddr> = lan.filter(|a| ca.scope.covers_ip(*a)).into_iter().map(IpAddr::V4).collect();
         let dns: Vec<&str> = Some(self.p.name.as_str()).filter(|n| ca.scope.covers_name(n)).into_iter().collect();
         if ips.is_empty() && dns.is_empty() {
-            return Err(format!("The certificate authority covers neither the router\u{2019}s LAN address nor {}. {NEW_CA}", self.p.name));
+            return Err(format!("证书颁发机构既不覆盖路由器的 LAN 地址，也不覆盖 {}。{NEW_CA}", self.p.name));
         }
         let not_after = not_after.min(ca.issuing_info.not_after);
         let spec = LeafSpec { dns: &dns, ips: &ips, not_before, not_after };
@@ -433,19 +433,19 @@ impl Tls {
         let name_url = format!("https://{}:{}/console/", self.p.name, self.port);
         if !ca.scope.covers_name(&self.p.name) {
             Some(format!(
-                "The certificate authority was made for {}, not {} ({NAME_ENV}). To use the new name, Reset HTTPS and turn it on again (each device must then trust the new authority).",
+                "证书颁发机构是为 {} 创建的，而不是 {}（{NAME_ENV}）。要使用新名称，请重置 HTTPS 并重新开启（之后每台设备都需要信任新的证书颁发机构）。",
                 ca.scope.dns.join(", "),
                 self.p.name
             ))
         } else if !private(lan) {
-            Some(format!("The router\u{2019}s LAN address {lan} is not a private address (10.x, 172.16\u{2013}31.x, 192.168.x): only {name_url} works."))
+            Some(format!("路由器的 LAN 地址 {lan} 不是私有地址（10.x、172.16–31.x、192.168.x）：只有 {name_url} 可用。"))
         } else if !ca.scope.covers_ip(lan) {
             let was = match ca.scope.ips.as_slice() {
                 [] => "no address".to_owned(),
                 ips => ips.iter().map(|(n, l)| net(*n, *l)).collect::<Vec<_>>().join(", "),
             };
             Some(format!(
-                "The router\u{2019}s LAN address is now {lan}, but its certificate authority was made for {was}: only {name_url} works. To use the address, Reset HTTPS and turn it on again (each device must then trust the new authority)."
+                "路由器的 LAN 地址现已更改为 {lan}，但其证书颁发机构是为 {was} 创建的：只有 {name_url} 可用。要使用该地址，请重置 HTTPS 并重新开启（之后每台设备都需要信任新的证书颁发机构）。"
             ))
         } else {
             None
@@ -507,7 +507,7 @@ impl Tls {
             Ok(Some(files)) => files,
             Err(e) => {
                 eprintln!("[tls] {}: {e}", self.p.dir.display());
-                self.set_error(Some(format!("Could not read the certificates: {e}. {NEW_CA}")));
+                self.set_error(Some(format!("无法读取证书：{e}。{NEW_CA}")));
                 return;
             }
         };
@@ -515,7 +515,7 @@ impl Tls {
             Ok(ca) => Arc::new(ca),
             Err(e) => {
                 eprintln!("[tls] {e}");
-                self.set_error(Some(format!("The saved certificate authority is unusable ({e}). {NEW_CA}")));
+                self.set_error(Some(format!("已保存的证书颁发机构不可用（{e}）。{NEW_CA}")));
                 return;
             }
         };
@@ -576,7 +576,7 @@ impl Tls {
             eprintln!("[tls] HTTPS on: {}, a new server certificate", ca.root_info.cn);
         } else {
             let mut id = [0u8; 4];
-            ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut id).map_err(|_| "No randomness available.")?;
+            ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut id).map_err(|_| "没有可用的随机源。")?;
             let id = format!("{:02X}{:02X}{:02X}{:02X}", id[0], id[1], id[2], id[3]);
             let (cn, issuing_cn) = (format!("U60 Pro local CA {id}"), format!("U60 Pro issuing CA {id}"));
             // This router only: its LAN address (if private) and the name.
@@ -603,7 +603,7 @@ impl Tls {
             eprintln!("[tls] HTTPS on: {cn}, SHA-256 {}", loaded.ca.sha256);
             self.install(loaded, key);
         }
-        let cur = self.loaded().ok_or("HTTPS is off.")?;
+        let cur = self.loaded().ok_or("HTTPS 已关闭。")?;
         self.refresh(&cur, Some(ip));
         self.on.send_replace(true);
         Ok(())
@@ -613,7 +613,7 @@ impl Tls {
     /// certificate from the same CA (devices keep trusting it).
     pub fn renew(&self) -> Result<(), String> {
         let _w = lock(&self.work);
-        let cur = self.loaded().ok_or("HTTPS is off.")?;
+        let cur = self.loaded().ok_or("HTTPS 已关闭。")?;
         let now = self.utc().usable().ok_or(CLOCK_UNSET)?;
         let lan = (self.p.lan_ip)();
         self.issue(&cur.ca, lan.or(cur.server_ip()), now - BACKDATE, now - BACKDATE + SERVER_DAYS * DAY)?;
@@ -639,8 +639,8 @@ impl Tls {
         let files = remove_files(&self.p.dir);
         let hosts = self.p.hosts.remove();
         eprintln!("[tls] HTTPS reset: certificates deleted");
-        files.map_err(|e| format!("Could not delete {}: {e}", self.p.dir.display()))?;
-        hosts.map_err(|e| format!("Could not delete {}: {e}", self.p.hosts.file.display()))?;
+        files.map_err(|e| format!("无法删除 {}：{e}", self.p.dir.display()))?;
+        hosts.map_err(|e| format!("无法删除 {}：{e}", self.p.hosts.file.display()))?;
         Ok(())
     }
 
@@ -785,7 +785,7 @@ impl Status {
 }
 
 fn saving(e: std::io::Error) -> String {
-    format!("Could not save the certificates: {e}")
+    format!("无法保存证书：{e}")
 }
 
 /// `bytes` as `dir/name` with exactly `mode`: written beside it, synced,

@@ -395,7 +395,7 @@ fun AppNavigation() {
                 ScheduleRebootScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Placeholder.route) { backStackEntry ->
-                val title = backStackEntry.arguments?.getString("title") ?: "Feature"
+                val title = backStackEntry.arguments?.getString("title") ?: "功能"
                 PlaceholderScreen(title = title, onBack = { navController.popBackStack() })
             }
         }

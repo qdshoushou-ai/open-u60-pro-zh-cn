@@ -31,17 +31,17 @@ const assert=require('node:assert/strict'),http=require('node:http'),fs=require(
   const confirm=label=>page.locator('.confirm-dialog').getByRole('button',{name:label,exact:true}).click();
   try{
     await page.goto(`http://127.0.0.1:${server.address().port}/#settings/update`);await page.waitForFunction(()=>document.querySelector('#update-current-version')?.textContent==='v2.4.0');
-    assert.match(await page.locator('.update-panel').textContent(),/A\/B recovery ready/);assert.equal(await page.locator('#update-install').isDisabled(),true);
-    await page.locator('#update-channel').selectOption('beta');await page.locator('#update-auto-download').check();await page.locator('#update-save').click();await confirm('Use Beta');await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('Preferences saved'));
+    assert.match(await page.locator('.update-panel').textContent(),/A\/B 恢复已就绪/);assert.equal(await page.locator('#update-install').isDisabled(),true);
+    await page.locator('#update-channel').selectOption('beta');await page.locator('#update-auto-download').check();await page.locator('#update-save').click();await confirm('使用 Beta');await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('更新偏好已保存'));
     assert.deepEqual(requests.find(request=>request.url==='/api/update/settings').body,{channel:'beta',automatic_checks:true,automatic_downloads:true});
-    await page.locator('#update-check').click();await page.waitForFunction(()=>document.querySelector('#update-available-version')?.textContent.includes('v2.5.0-beta.1'));assert.match(await page.locator('#update-release-copy').textContent(),/Signed Beta/);
+    await page.locator('#update-check').click();await page.waitForFunction(()=>document.querySelector('#update-available-version')?.textContent.includes('v2.5.0-beta.1'));assert.match(await page.locator('#update-release-copy').textContent(),/已签名的 Beta 版本/);
     await page.locator('#update-download').click();
     await page.waitForFunction(()=>document.querySelector('#update-phase').textContent==='Downloading'&&document.querySelector('#update-percent').textContent==='99');
     assert.equal(await page.locator('#update-progress-bar').getAttribute('style'),'width: 99%;');
-    await page.waitForFunction(()=>document.querySelector('#update-bytes').textContent.includes('verifying signed binary'));
+    await page.waitForFunction(()=>document.querySelector('#update-bytes').textContent.includes('正在校验已签名二进制文件'));
     assert.equal(await page.locator('#update-percent').textContent(),'99','verification never presents a premature 100%');
-    await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('staged'));assert.equal(await page.locator('#update-install').isDisabled(),false);assert.equal(await page.locator('#update-rollback').isDisabled(),true);assert.equal(await page.locator('#update-percent').textContent(),'100');
-    await page.locator('#update-install').click();await confirm('Install agent');await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('reconnect automatically'));assert.deepEqual(requests.find(request=>request.url==='/api/update/install').body,{confirm:true});
+    await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('校验并暂存'));assert.equal(await page.locator('#update-install').isDisabled(),false);assert.equal(await page.locator('#update-rollback').isDisabled(),true);assert.equal(await page.locator('#update-percent').textContent(),'100');
+    await page.locator('#update-install').click();await confirm('安装 Agent');await page.waitForFunction(()=>document.querySelector('#update-feedback').textContent.includes('自动重新连接'));assert.deepEqual(requests.find(request=>request.url==='/api/update/install').body,{confirm:true});
     const before=requests.length;await page.waitForTimeout(1200);assert.equal(requests.length,before,'the update page receives live SSE and never polls while idle');
     for(const width of [320,390,820,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`update page overflow at ${width}px`);}
     assert.deepEqual(errors,[]);console.log('Passed: signed update channel settings, staging, confirmation, SSE-only live status and responsive layout.');

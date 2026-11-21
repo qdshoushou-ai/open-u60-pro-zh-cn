@@ -16,17 +16,17 @@ pub(crate) fn sanitize(command: &str) -> String {
 pub fn at_send(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     let command = match parsed["command"].as_str() {
         Some(c) => c,
-        None => return (400, json!({"ok": false, "error": "missing 'command' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 command"})),
     };
 
     // Validate: must start with "AT" (case-insensitive)
     if !command.to_ascii_uppercase().starts_with("AT") {
-        return (400, json!({"ok": false, "error": "command must start with 'AT'"}));
+        return (400, json!({"ok": false, "error": "命令必须以“AT”开头"}));
     }
 
     // Parse timeout: optional, 1-30, default 3
@@ -39,7 +39,7 @@ pub fn at_send(state: &AppState, body: &[u8]) -> (u16, Value) {
     let sanitized = sanitize(command);
 
     if sanitized.is_empty() {
-        return (400, json!({"ok": false, "error": "command is empty after sanitization"}));
+        return (400, json!({"ok": false, "error": "清理后命令为空"}));
     }
 
     let start = Instant::now();

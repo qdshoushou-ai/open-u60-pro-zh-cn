@@ -107,7 +107,7 @@ pub fn precheck(req: &ReqInfo, env: &PreEnv) -> Pre {
     if req.path != "/api/auth/login" && has_password {
         principal = req.bearer.and_then(|t| env.auth.authenticate(Kind::Bearer, t));
         if principal.is_none() {
-            return refuse(401, "unauthorized");
+            return refuse(401, "未授权");
         }
     }
     // Refuse names a rebinding attack would use (any IP literal and the
@@ -117,14 +117,14 @@ pub fn precheck(req: &ReqInfo, env: &PreEnv) -> Pre {
     // try passwords at the login route or use up its rate limit.
     if !has_password || req.headers.origin.is_some() || req.headers.sec_fetch_site.is_some() {
         let Some(host) = req.headers.host else {
-            return refuse(400, "missing host");
+            return refuse(400, "缺少 Host 头");
         };
         if !env.hosts.allows_via(host, req.loopback, req.secure, env.ts_names) {
-            return refuse(403, "host not allowed");
+            return refuse(403, "不允许的主机");
         }
     }
     if guard::api_mutation_refused(req.method, &req.headers) {
-        return refuse(403, "cross-origin request refused");
+        return refuse(403, "跨源请求被拒绝");
     }
     match (req.method, req.path) {
         (Method::Post, "/api/auth/login") => return Pre::Login,
@@ -142,25 +142,25 @@ pub fn precheck(req: &ReqInfo, env: &PreEnv) -> Pre {
             return if principal.is_some() {
                 Pre::EsimQr
             } else {
-                refuse(403, "agent password required")
+                refuse(403, "需要 Agent 密码")
             };
         }
         // Streams belong to a token (their expiry and per-token cap), so
         // they need a password.
         (Method::Get, "/api/dashboard/events") => {
-            return if principal.is_some() { Pre::Dashboard } else { refuse(403,"agent password required") };
+            return if principal.is_some() { Pre::Dashboard } else { refuse(403,"需要 Agent 密码") };
         }
         (Method::Get, "/api/events") => {
             return match principal {
                 Some(p) => Pre::Events { owner: p.id },
-                None => refuse(403, "agent password required"),
+                None => refuse(403, "需要 Agent 密码"),
             };
         }
         _ => {}
     }
     let live_activity = req.path.starts_with("/api/live-activity");
     if live_activity && !has_password {
-        return refuse(403, "agent password required");
+        return refuse(403, "需要 Agent 密码");
     }
     Pre::Dispatch {
         body_limit: if live_activity { LIVE_ACTIVITY_BODY_MAX } else { API_BODY_MAX },
@@ -492,7 +492,7 @@ fn route_inner(method: &Method, path: &str, state: &AppState, body: &[u8]) -> (u
         (&Method::Post, "/api/at/send") => at_terminal::at_send(state, body),
         (&Method::Get, "/api/at/port") => at_terminal::at_port(state),
         // Fallback
-        _ => (404, json!({"ok": false, "error": "not found"})),
+        _ => (404, json!({"ok": false, "error": "未找到"})),
     }
 }
 
@@ -542,22 +542,22 @@ pub fn route(method: &Method, path: &str, state: &AppState, body: &[u8]) -> (u16
 /// HTTPS changes use the existing authenticated API, never legacy browser cookies.
 fn https_change(state: &AppState, path: &str, body: &[u8]) -> (u16, Value) {
     if !state.auth.has_password() {
-        return (403, json!({"ok":false,"error":"agent password required"}));
+        return (403, json!({"ok":false,"error":"需要 Agent 密码"}));
     }
     let Ok(value) = serde_json::from_slice::<Value>(body) else {
-        return (400, json!({"ok":false,"error":"invalid JSON"}));
+        return (400, json!({"ok":false,"error":"无效的 JSON"}));
     };
     if value["confirm"] != true {
         return (
             400,
-            json!({"ok":false,"error":"explicit confirmation required"}),
+            json!({"ok":false,"error":"需要显式确认"}),
         );
     }
     let result = match path {
         "/api/https/on" => state.tls.turn_on(),
         "/api/https/renew" => state.tls.renew(),
         "/api/https/reset" => state.tls.reset(),
-        _ => return (404, json!({"ok":false,"error":"not found"})),
+        _ => return (404, json!({"ok":false,"error":"未找到"})),
     };
     match result {
         Ok(()) => state.tls.status_json(),
@@ -619,9 +619,9 @@ mod tests {
         let h = host("192.168.0.1:9090");
         // The login route is exempt from the token check.
         assert_eq!(run(&auth, &info(Method::Post, "/api/auth/login", None, None, h)), Pre::Login);
-        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, h)), reply(401, "unauthorized"));
-        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, Some("nope"), h)), reply(401, "unauthorized"));
-        assert_eq!(run(&auth, &info(Method::Get, "/api/lan/ping", None, None, h)), reply(401, "unauthorized"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, h)), reply(401, "未授权"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, Some("nope"), h)), reply(401, "未授权"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/lan/ping", None, None, h)), reply(401, "未授权"));
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, t, h)), DISPATCH);
         // With a password the apps' Host is not checked (they may use any name; browsers: below).
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, t, host("evil.com"))), DISPATCH);
@@ -630,13 +630,13 @@ mod tests {
         let cross = ReqHeaders { origin: Some("http://evil.com"), ..h };
         assert_eq!(
             run(&auth, &info(Method::Post, "/api/device/reboot", None, t, cross)),
-            reply(403, "cross-origin request refused")
+            reply(403, "跨源请求被拒绝")
         );
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, t, cross)), DISPATCH);
         let site = ReqHeaders { sec_fetch_site: Some("cross-site"), ..h };
         assert_eq!(
             run(&auth, &info(Method::Put, "/api/wifi/settings", None, t, site)),
-            reply(403, "cross-origin request refused")
+            reply(403, "跨源请求被拒绝")
         );
         assert_eq!(
             run(&auth, &info(Method::Get, "/api/live-activity", None, t, h)),
@@ -655,7 +655,7 @@ mod tests {
             run(&auth, &info(Method::Get, "/api/events", Some("topics=sms"), t, h)),
             Pre::Events { owner: token.id }
         );
-        assert_eq!(run(&auth, &info(Method::Get, "/api/events", None, None, h)), reply(401, "unauthorized"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/events", None, None, h)), reply(401, "未授权"));
         assert_eq!(run(&auth, &info(Method::Post, "/api/events", None, t, h)), DISPATCH);
     }
 
@@ -669,13 +669,13 @@ mod tests {
         };
         // A rebound page posting passwords: refused before the limiter.
         let login = lan(info(Method::Post, "/api/auth/login", None, None, rebound));
-        assert_eq!(run(&auth, &login), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &login), reply(403, "不允许的主机"));
         let fetch_site = ReqHeaders { origin: None, sec_fetch_site: Some("same-origin"), ..rebound };
-        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, fetch_site))), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, fetch_site))), reply(403, "不允许的主机"));
         let no_host = ReqHeaders { host: None, ..rebound };
-        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, no_host))), reply(400, "missing host"));
+        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, no_host))), reply(400, "缺少 Host 头"));
         for _ in 0..40 {
-            assert_eq!(run(&auth, &login), reply(403, "host not allowed"));
+            assert_eq!(run(&auth, &login), reply(403, "不允许的主机"));
         }
         assert!(auth.login(PW, Kind::Bearer, peer(9), &[]).is_ok(), "the limiter was touched");
         // The apps send no Origin: any name, as before.
@@ -687,7 +687,7 @@ mod tests {
         // Tailscale names count only for Tailscale (loopback) peers.
         let ts = ReqHeaders { host: Some("u60-pro:9090"), origin: Some("http://u60-pro:9090"), ..rebound };
         assert_eq!(run(&auth, &info(Method::Post, "/api/auth/login", None, None, ts)), Pre::Login);
-        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, ts))), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &lan(info(Method::Post, "/api/auth/login", None, None, ts))), reply(403, "不允许的主机"));
     }
 
     #[test]
@@ -696,41 +696,41 @@ mod tests {
         let h = host("192.168.0.1:9090");
         assert_eq!(
             run(&auth, &info(Method::Post, "/api/esim/qr", None, None, h)),
-            reply(403, "agent password required")
+            reply(403, "需要 Agent 密码")
         );
         // Open, but Host-checked.
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, h)), DISPATCH);
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, host("u60-pro:9090"))), DISPATCH);
         assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, host("localhost"))), DISPATCH);
         // The device's own names only from loopback (Tailscale) peers.
-        assert_eq!(run(&auth, &lan(info(Method::Get, "/api/device", None, None, host("u60-pro:9090")))), reply(403, "host not allowed"));
-        assert_eq!(run(&auth, &lan(info(Method::Get, "/api/device", None, None, host("localhost")))), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &lan(info(Method::Get, "/api/device", None, None, host("u60-pro:9090")))), reply(403, "不允许的主机"));
+        assert_eq!(run(&auth, &lan(info(Method::Get, "/api/device", None, None, host("localhost")))), reply(403, "不允许的主机"));
         assert_eq!(run(&auth, &lan(info(Method::Get, "/api/device", None, None, h))), DISPATCH);
-        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, host("evil.com:9090"))), reply(403, "host not allowed"));
-        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, ReqHeaders::default())), reply(400, "missing host"));
-        assert_eq!(run(&auth, &info(Method::Post, "/api/auth/login", None, None, host("evil.com"))), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, host("evil.com:9090"))), reply(403, "不允许的主机"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/device", None, None, ReqHeaders::default())), reply(400, "缺少 Host 头"));
+        assert_eq!(run(&auth, &info(Method::Post, "/api/auth/login", None, None, host("evil.com"))), reply(403, "不允许的主机"));
         // Cross-origin mutations are refused; same-origin ones pass.
         let cross = ReqHeaders { origin: Some("http://evil.com"), ..h };
-        assert_eq!(run(&auth, &info(Method::Post, "/api/device/reboot", None, None, cross)), reply(403, "cross-origin request refused"));
+        assert_eq!(run(&auth, &info(Method::Post, "/api/device/reboot", None, None, cross)), reply(403, "跨源请求被拒绝"));
         let same = ReqHeaders { origin: Some("http://192.168.0.1:9090"), ..h };
         assert_eq!(run(&auth, &info(Method::Post, "/api/device/reboot", None, None, same)), DISPATCH);
         assert_eq!(run(&auth, &info(Method::Post, "/api/auth/login", None, None, h)), Pre::Login);
         assert_eq!(
             run(&auth, &info(Method::Get, "/api/live-activity", None, None, h)),
-            reply(403, "agent password required")
+            reply(403, "需要 Agent 密码")
         );
         assert_eq!(
             run(&auth, &info(Method::Delete, "/api/live-activity", None, None, h)),
-            reply(403, "agent password required")
+            reply(403, "需要 Agent 密码")
         );
         assert_eq!(run(&auth, &info(Method::Get, "/api/lan/ping", Some("x=1"), None, h)), Pre::Reply(200, json!({"ok": true})));
         // Wrong method: not special, falls through to route()'s 404.
         assert_eq!(run(&auth, &info(Method::Post, "/api/lan/ping", None, None, h)), DISPATCH);
         assert_eq!(
             run(&auth, &info(Method::Get, "/api/events", Some("topics=sms"), None, h)),
-            reply(403, "agent password required")
+            reply(403, "需要 Agent 密码")
         );
-        assert_eq!(run(&auth, &info(Method::Get, "/api/events", None, None, host("evil.com"))), reply(403, "host not allowed"));
+        assert_eq!(run(&auth, &info(Method::Get, "/api/events", None, None, host("evil.com"))), reply(403, "不允许的主机"));
     }
 
     #[test]

@@ -11,10 +11,9 @@ export default function FAQPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="mb-2 font-display text-2xl font-bold">FAQ</h1>
+        <h1 className="mb-2 font-display text-2xl font-bold">常见问题</h1>
         <p className="text-text-dim">
-          Frequently asked questions about zte-agent and the ZTE U60 Pro
-          Toolkit.
+          关于 zte-agent 与 ZTE U60 Pro 工具集的常见问题。
         </p>
       </div>
 

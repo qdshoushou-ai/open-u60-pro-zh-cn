@@ -75,9 +75,9 @@ fn read(object: &str, method: &str, args: &str) -> Result<Value, String> {
         .output()
         .map_err(|error| error.to_string())?;
     if !output.status.success() {
-        return Err("The router could not read this client source".into());
+        return Err("路由器无法读取此客户端来源".into());
     }
-    serde_json::from_slice(&output.stdout).map_err(|_| "The router returned no client data".into())
+    serde_json::from_slice(&output.stdout).map_err(|_| "路由器未返回客户端数据".into())
 }
 
 fn records(data: &Value, key: &str) -> Result<Vec<Value>, String> {
@@ -85,7 +85,7 @@ fn records(data: &Value, key: &str) -> Result<Vec<Value>, String> {
         .and_then(Value::as_array)
         .filter(|rows| rows.iter().all(Value::is_object))
         .cloned()
-        .ok_or_else(|| "The router returned no usable client list".into())
+        .ok_or_else(|| "路由器未返回可用的客户端列表".into())
 }
 
 fn wireless() -> Result<Vec<Value>, String> {
@@ -103,13 +103,13 @@ fn wireless() -> Result<Vec<Value>, String> {
         let done = rows.len() < 10;
         all.extend(rows);
         if all.len() > MAX_DEVICES {
-            return Err("The client list exceeds the supported inventory size".into());
+            return Err("客户端列表超出支持的清单大小".into());
         }
         if done {
             return Ok(all);
         }
     }
-    Err("The router client list is incomplete".into())
+    Err("路由器客户端列表不完整".into())
 }
 
 fn parse_stations(text: &str, iface: &str) -> Vec<Station> {
@@ -293,7 +293,7 @@ impl ClientMonitor {
             .and_then(|data| records(&data, "lan_access_list_info"));
         if wifi.is_err() && wired.is_err() {
             monitor.windows.clear();
-            return json!({"ok":false,"error":"Connected-device readings are unavailable"});
+            return json!({"ok":false,"error":"已连接设备读数不可用"});
         }
         let mut devices = BTreeMap::new();
         if let Ok(rows) = &wifi {

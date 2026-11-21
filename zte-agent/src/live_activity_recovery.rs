@@ -260,12 +260,12 @@ fn verified_server_time(client: &reqwest::blocking::Client) -> Result<u64, &'sta
         ))
         .header("Cache-Control", "no-cache, no-store")
         .send()
-        .map_err(|_| "time verification failed: DNS, TLS or internet unavailable")?;
+        .map_err(|_| "时间验证失败：DNS、TLS 或互联网不可用")?;
     if !response.status().is_success() {
-        return Err("time endpoint unavailable");
+        return Err("时间端点不可用");
     }
     if started.elapsed() > Duration::from_secs(10) {
-        return Err("time response too slow");
+        return Err("时间响应过慢");
     }
     if response.headers().get("age").is_some_and(|v| {
         v.to_str()
@@ -273,23 +273,23 @@ fn verified_server_time(client: &reqwest::blocking::Client) -> Result<u64, &'sta
             .and_then(|s| s.parse::<u64>().ok())
             .is_none_or(|age| age > 0)
     }) {
-        return Err("cached time response rejected");
+        return Err("已拒绝缓存的时间响应");
     }
     let date = response
         .headers()
         .get("date")
         .and_then(|v| v.to_str().ok())
-        .ok_or("time response missing Date")?;
+        .ok_or("时间响应缺少 Date")?;
     parse_server_time(date)
 }
 fn parse_server_time(date: &str) -> Result<u64, &'static str> {
     let epoch = httpdate::parse_http_date(date)
-        .map_err(|_| "invalid time response")?
+        .map_err(|_| "无效的时间响应")?
         .duration_since(UNIX_EPOCH)
-        .map_err(|_| "invalid time epoch")?
+        .map_err(|_| "无效的时间纪元")?
         .as_secs();
     if !(1_700_000_000..4_102_444_800).contains(&epoch) {
-        return Err("time response outside supported range");
+        return Err("时间响应超出支持范围");
     }
     Ok(epoch)
 }
@@ -300,7 +300,7 @@ fn set_clock(epoch: u64) -> Result<(), &'static str> {
     };
     // SAFETY: `time` points to an initialized timespec for the duration of this synchronous call.
     if unsafe { libc::clock_settime(libc::CLOCK_REALTIME, &time) } != 0 {
-        return Err("verified UTC available; cannot set modem clock");
+        return Err("已获取已验证的 UTC，但无法设置调制解调器时钟");
     }
     eprintln!("[live_activity] corrected modem UTC from verified time anchor");
     Ok(())

@@ -1,2 +1,3 @@
 "CFBundleDisplayName" = "OpenU60";
 "NSLocalNetworkUsageDescription" = "OpenU60 needs local network access to communicate with your ZTE router.";
+"NSCameraUsageDescription" = "OpenU60 uses the camera to scan eSIM QR codes.";

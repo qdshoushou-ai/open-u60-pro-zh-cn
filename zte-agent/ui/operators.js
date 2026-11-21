@@ -2,10 +2,10 @@
 (() => {
   const UI = OpenU60UI, API = OpenU60Console, A = OpenU60Advanced;
   const {el,button,say,json,request,confirm,mutate} = UI;
-  const section = UI.panel('network/operators','operator-scan','Available mobile networks','Scan from the router’s SIM, then choose a network. Scanning may interrupt mobile data for up to a few minutes.');
-  const actions = el('div','form-actions'), scan = button('Scan networks',startScan,'primary'), automatic = button('Use automatic selection',useAutomatic);
+  const section = UI.panel('network/operators','operator-scan','可用移动网络','通过路由器的 SIM 卡扫描，然后选择网络。扫描可能中断移动数据，最长几分钟。');
+  const actions = el('div','form-actions'), scan = button('扫描网络',startScan,'primary'), automatic = button('使用自动选择',useAutomatic);
   actions.append(scan,automatic); section.append(actions);
-  const feedback = UI.status(section), state = el('p','field-help','Waiting for the modem’s scan status.'), list = el('div','operator-list');
+  const feedback = UI.status(section), state = el('p','field-help','等待调制解调器的扫描状态。'), list = el('div','operator-list');
   section.append(state,list);
   const scanJob = new A.Job('scan',120000), registerJob = new A.Job('registration',60000);
   let latest, selectedName = '', autoPending = false;
@@ -18,61 +18,61 @@
     const scanning = ['running','waiting'].includes(phase) || scanJob.pending;
     scan.disabled = !connected() || scanning || registerJob.pending;
     automatic.disabled = !connected() || registerJob.pending;
-    state.textContent = !data ? 'Waiting for scan readings…' : data.status?.ok ? `Modem scan status: ${status ?? 'not reported'} · ${data.sampled_at ? new Date(Number(data.sampled_at)).toLocaleTimeString() : 'live stream'}` : 'Scan status unavailable. Previously reported networks are retained.';
+    state.textContent = !data ? '等待扫描数据…' : data.status?.ok ? `调制解调器扫描状态：${status ?? '未上报'} · ${data.sampled_at ? new Date(Number(data.sampled_at)).toLocaleTimeString() : '实时数据流'}` : '扫描状态不可用。之前上报的网络已保留。';
     if (registerJob.started !== null) {
-      if (registration === 'complete') say(feedback,`The modem reports successful registration for ${selectedName}. Check Mobile Network for the resulting data connection.`);
-      else if (registration === 'failed') say(feedback,`The modem reports registration failed for ${selectedName}. Try automatic selection or another allowed network.`,true);
-      else if (registration === 'timeout') say(feedback,'Registration has not been confirmed within a minute. The modem may still be working; check its state before retrying.',true);
-      else say(feedback,`Waiting for registration to ${selectedName}…`);
+      if (registration === 'complete') say(feedback,`调制解调器报告已成功注册到 ${selectedName}。请在移动网络中检查由此产生的数据连接。`);
+      else if (registration === 'failed') say(feedback,`调制解调器报告注册 ${selectedName} 失败。请尝试自动选择或其他允许的网络。`,true);
+      else if (registration === 'timeout') say(feedback,'一分钟内未确认注册。调制解调器可能仍在处理；重试前请检查其状态。',true);
+      else say(feedback,`正在等待注册到 ${selectedName}…`);
     } else if (scanJob.started !== null) {
-      if (phase === 'complete') say(feedback,'The modem reports the scan is complete. Select an available network below. Results can include cached operator information.');
-      else if (phase === 'failed') say(feedback,'The modem reports that the scan failed. Check the SIM and radio state before trying again.',true);
-      else if (phase === 'timeout') say(feedback,'The scan has not been confirmed within two minutes. Scanning may still continue on the router.',true);
-      else say(feedback,'Scanning mobile networks… Results arrive automatically.');
+      if (phase === 'complete') say(feedback,'调制解调器报告扫描完成。请在下方选择可用网络。结果可能包含缓存的运营商信息。');
+      else if (phase === 'failed') say(feedback,'调制解调器报告扫描失败。重试前请检查 SIM 与射频状态。',true);
+      else if (phase === 'timeout') say(feedback,'两分钟内未确认扫描完成。路由器上的扫描可能仍在继续。',true);
+      else say(feedback,'正在扫描移动网络…结果会自动到达。');
     }
     if (data?.results?.ok) draw(A.operators(data.results.data),scanning);
   }
   function draw(rows,scanning) {
     list.replaceChildren();
-    if (!rows.length) { list.append(el('p','carrier-empty',scanning ? 'Waiting for scan results…' : 'No networks reported. Start a scan to look for operators.')); return; }
+    if (!rows.length) { list.append(el('p','carrier-empty',scanning ? '等待扫描结果…' : '未上报网络。开始扫描以查找运营商。')); return; }
     for (const operator of rows) {
       const card = el('article','operator-card'), copy = el('div'), heading = el('div','title-count');
       heading.append(el('h3','',operator.name),el('span','tag',operator.status));
-      copy.append(heading,el('p','mono',`${operator.plmn || 'PLMN unavailable'} · ${operator.rat || 'Access type unavailable'}`));
-      const choose = button('Register',()=>register(operator));
+      copy.append(heading,el('p','mono',`${operator.plmn || 'PLMN 不可用'} · ${operator.rat || '接入类型不可用'}`));
+      const choose = button('注册',()=>register(operator));
       choose.disabled = !connected() || scanning || registerJob.pending || !operator.selectable;
-      if (!operator.selectable) choose.title = 'The operator is forbidden or has no usable network identifier.';
+      if (!operator.selectable) choose.title = '该运营商被禁止，或没有可用的网络标识。';
       card.append(copy,choose); list.append(card);
     }
   }
   async function startScan() {
-    if (!await confirm('Scan mobile networks?','The router will search available operators. Mobile data may disconnect during the scan. The scan continues if you leave this page.',{label:'Start scan'})) return;
+    if (!await confirm('扫描移动网络？','路由器将搜索可用运营商。扫描期间移动数据可能断开。离开此页面后扫描仍会继续。',{label:'开始扫描'})) return;
     await mutate(feedback,async current=>{
       await request('/api/modem/scan',json('POST',{})); if (!current()) return;
-      registerJob.clear(); scanJob.start(); autoPending = false; list.replaceChildren(el('p','carrier-empty','Waiting for new scan results…')); update(true);
+      registerJob.clear(); scanJob.start(); autoPending = false; list.replaceChildren(el('p','carrier-empty','等待新的扫描结果…')); update(true);
     });
   }
   async function register(operator) {
-    if (!operator.selectable || !await confirm('Register with this network?',`Select ${operator.name} (${operator.plmn}, ${operator.rat}). This can disconnect mobile data. Roaming charges may apply; your SIM must allow access.`,{label:'Register network'})) return;
+    if (!operator.selectable || !await confirm('注册到此网络？',`选择 ${operator.name}（${operator.plmn}，${operator.rat}）。此操作可能断开移动数据。可能产生漫游费用；你的 SIM 必须允许接入。`,{label:'注册网络'})) return;
     await mutate(feedback,async current=>{
       await request('/api/modem/register',json('POST',{m_mcc_mnc:operator.plmn,m_rat:operator.rat})); if (!current()) return;
       scanJob.clear(); registerJob.start(); selectedName = operator.name; autoPending = false; update(true);
     });
   }
   async function useAutomatic() {
-    if (!await confirm('Use automatic network selection?','Let the SIM and modem choose the mobile operator again. Mobile data may reconnect.',{label:'Use automatic'})) return;
+    if (!await confirm('使用自动网络选择？','让 SIM 与调制解调器重新选择移动运营商。移动数据可能重新连接。',{label:'使用自动选择'})) return;
     await mutate(feedback,async current=>{
       await request('/api/modem/network-mode',json('PUT',{net_select_mode:'auto_select'})); if (!current()) return;
-      registerJob.clear(); scanJob.clear(); autoPending = API.data('signal')?.net_select_mode !== 'auto_select'; say(feedback,autoPending ? 'Automatic selection requested. Waiting for the modem to confirm it…' : 'Automatic network selection confirmed by the modem.');
+      registerJob.clear(); scanJob.clear(); autoPending = API.data('signal')?.net_select_mode !== 'auto_select'; say(feedback,autoPending ? '已请求自动选择。正在等待调制解调器确认…' : '调制解调器已确认自动网络选择。');
     });
   }
   window.addEventListener('dashboard:readings',event=>{
     if (event.detail.readings.operators?.ok) { latest = event.detail.readings.operators.data; update(true); }
-    if (autoPending && event.detail.readings.signal?.ok && event.detail.readings.signal.data?.net_select_mode === 'auto_select') { autoPending = false; say(feedback,'Automatic network selection confirmed by the modem.'); }
+    if (autoPending && event.detail.readings.signal?.ok && event.detail.readings.signal.data?.net_select_mode === 'auto_select') { autoPending = false; say(feedback,'调制解调器已确认自动网络选择。'); }
   });
   const timer = setInterval(()=>{ if (!document.hidden && OpenU60Navigation.current.key === 'network/operators' && (scanJob.pending || registerJob.pending)) update(); },1000);
   window.addEventListener('dashboard:navigate',()=>{ if (OpenU60Navigation.current.key === 'network/operators') update(); });
-  UI.track({route:'network/operators',loaded:true,load:()=>{},get dirty(){return false;},clear:()=>{ latest = null; selectedName = ''; autoPending = false; scanJob.clear(); registerJob.clear(); state.textContent = 'Unlock the console to read the modem status.'; list.replaceChildren(); feedback.textContent = ''; scan.disabled = automatic.disabled = true; }});
+  UI.track({route:'network/operators',loaded:true,load:()=>{},get dirty(){return false;},clear:()=>{ latest = null; selectedName = ''; autoPending = false; scanJob.clear(); registerJob.clear(); state.textContent = '解锁控制台以读取调制解调器状态。'; list.replaceChildren(); feedback.textContent = ''; scan.disabled = automatic.disabled = true; }});
   window.addEventListener('pagehide',event=>{ if (!event.persisted) clearInterval(timer); });
   latest = API.data('operators'); update(true);
 })();

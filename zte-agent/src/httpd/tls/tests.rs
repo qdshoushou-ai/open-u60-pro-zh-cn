@@ -190,7 +190,7 @@ fn https_serves_the_ui_with_the_routers_certificate() {
     // DNS can answer for it over http), for the UI or the API.
     let mut p = TcpStream::connect(s.plain).unwrap();
     let r = request(&mut p, &format!("GET /console/ HTTP/1.1\r\nHost: u60.home.arpa:{}", s.plain.port()), "");
-    assert_eq!((r.status, r.body.as_str()), (403, "Host not allowed"));
+    assert_eq!((r.status, r.body.as_str()), (403, "不允许的主机"));
     let r = request(&mut p, &format!("POST /api/auth/login HTTP/1.1\r\nHost: u60.home.arpa:{}\r\nOrigin: http://u60.home.arpa:{}", s.plain.port(), s.plain.port()), "{}");
     assert_eq!(r.status, 403);
     let mut c = connect(addr, client(&ca, &[&rustls::version::TLS13]), "u60.home.arpa").unwrap();
@@ -199,7 +199,7 @@ fn https_serves_the_ui_with_the_routers_certificate() {
     // DNS-rebinding protection otherwise, on both.
     let mut c = connect(addr, client(&ca, &[&rustls::version::TLS13]), "u60.home.arpa").unwrap();
     let r = request(&mut c, &format!("GET /console/ HTTP/1.1\r\nHost: evil.example:{}", addr.port()), "");
-    assert_eq!((r.status, r.body.as_str()), (403, "Host not allowed"));
+    assert_eq!((r.status, r.body.as_str()), (403, "不允许的主机"));
     let r = request(&mut p, "GET /console/ HTTP/1.1\r\nHost: u60.home.arpa.evil.example", "");
     assert_eq!(r.status, 403);
 }
@@ -442,7 +442,7 @@ fn a_failed_bind_is_shown_and_tried_again_at_turn_on() {
     let s = start_with(world, 16, || |_: SocketAddr, _: &tokio::net::TcpStream| true);
     s.tls.turn_on().unwrap();
     let deadline = Instant::now() + Duration::from_secs(10);
-    while !s.tls.status().error.is_some_and(|e| e.starts_with("Could not listen on 127.0.0.1:")) {
+    while !s.tls.status().error.is_some_and(|e| e.starts_with("无法监听 127.0.0.1：")) {
         assert!(Instant::now() < deadline, "no bind error: {:?}", s.tls.status());
         std::thread::sleep(Duration::from_millis(10));
     }

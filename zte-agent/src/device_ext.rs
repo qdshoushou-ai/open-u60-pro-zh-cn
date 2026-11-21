@@ -220,7 +220,7 @@ pub fn charge_control_get(state: &AppState) -> (u16, Value) {
 pub fn charge_control_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     // Manual charge stop/resume via ubus (inverted: "enable" = stop, "disable" = start)
@@ -233,7 +233,7 @@ pub fn charge_control_set(state: &AppState, body: &[u8]) -> (u16, Value) {
         if let Err(e) = result {
             return (
                 500,
-                json!({"ok": false, "error": format!("charger ubus: {e}")}),
+                json!({"ok": false, "error": format!("充电器 ubus：{e}")}),
             );
         }
         // Set manual override so enforcer doesn't fight the user
@@ -271,7 +271,7 @@ pub fn charge_control_set(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn device_power_save_get(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call(
         "zwrt_mc.device.manager",
@@ -286,7 +286,7 @@ pub fn device_power_save_get(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn device_power_save_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call(
         "zwrt_mc.device.manager",
@@ -312,11 +312,11 @@ pub fn device_fast_boot_get(_state: &AppState) -> (u16, Value) {
 pub fn device_fast_boot_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let val = match parsed["fast_boot"].as_str() {
         Some(v @ ("0" | "1")) => v,
-        _ => return (400, json!({"ok": false, "error": "fast_boot must be \"0\" or \"1\""})),
+        _ => return (400, json!({"ok": false, "error": "fast_boot 必须为“0”或“1”"})),
     };
     let params = format!(r#"{{"deviceInfoList":{{"quicken_power_on":"{val}"}}}}"#);
     match ubus::call("zwrt_mc.device.manager", "set_device_info", Some(&params)) {
@@ -345,14 +345,14 @@ pub fn device_auto_sleep_get(_state: &AppState) -> (u16, Value) {
 pub fn device_auto_sleep_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     if let Some(enabled) = parsed["enabled"].as_bool() {
         let params = format!(r#"{{"switch":{}}}"#, enabled);
         if let Err(e) = ubus::call("zwrt_zte_sleep_faw.wakelock", "enableAutoSleep", Some(&params))
         {
-            return (503, json!({"ok": false, "error": format!("enableAutoSleep: {e}")}));
+            return (503, json!({"ok": false, "error": format!("enableAutoSleep 失败：{e}")}));
         }
         // Persist to UCI so it survives reboots
         let val = if enabled { "1" } else { "0" };
@@ -368,12 +368,12 @@ pub fn device_auto_sleep_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
         if !valid {
             return (
                 400,
-                json!({"ok": false, "error": "timeout must be -1 or 1–1440 (minutes)"}),
+                json!({"ok": false, "error": "timeout 必须为 -1 或 1–1440（分钟）"}),
             );
         }
         let params = format!(r#"{{"ufiSleepTime":"{timeout}"}}"#);
         if let Err(e) = ubus::call("zwrt_zte_sleep_faw.wakelock", "set_ufi_sleep", Some(&params)) {
-            return (503, json!({"ok": false, "error": format!("set_ufi_sleep: {e}")}));
+            return (503, json!({"ok": false, "error": format!("set_ufi_sleep 失败：{e}")}));
         }
     }
 

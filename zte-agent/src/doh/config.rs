@@ -105,7 +105,7 @@ pub fn load() -> DohConfig {
 
 pub fn save(config: &DohConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config).map_err(|e| format!("serialize: {e}"))?;
-    std::fs::write(CONFIG_PATH, json).map_err(|e| format!("write {CONFIG_PATH}: {e}"))
+    std::fs::write(CONFIG_PATH, json).map_err(|e| format!("写入 {CONFIG_PATH} 失败：{e}"))
 }
 
 #[cfg(test)]

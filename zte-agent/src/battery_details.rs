@@ -103,7 +103,7 @@ fn supplies(base: &Path) -> std::io::Result<Value> {
 pub(crate) fn snapshot(state: &AppState) -> Value {
     let sensors = match supplies(Path::new("/sys/class/power_supply")) {
         Ok(data) => json!({"ok":true,"data":data}),
-        Err(_) => json!({"ok":false,"error":"Power-supply readings unavailable"}),
+        Err(_) => json!({"ok":false,"error":"电源读数不可用"}),
     };
     json!({"ok":true,"data":{
         "supplies":sensors,

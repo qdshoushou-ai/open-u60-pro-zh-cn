@@ -14,21 +14,21 @@ struct USBModeView: View {
                 }
             }
 
-            Section("USB Status") {
-                LabeledContent("Cable") {
-                    Text(viewModel.usbStatus.cableAttached ? "Connected" : "Disconnected")
+            Section("USB 状态") {
+                LabeledContent("数据线") {
+                    Text(viewModel.usbStatus.cableAttached ? "已连接" : "已断开")
                         .foregroundStyle(viewModel.usbStatus.cableAttached ? .green : .secondary)
                 }
                 LabeledContent("USB-C CC") {
                     Text(viewModel.usbStatus.typecCC)
                 }
-                LabeledContent("Mode") {
+                LabeledContent("模式") {
                     Text(viewModel.usbStatus.mode.isEmpty ? "—" : viewModel.usbStatus.mode)
                 }
             }
 
             Section {
-                Toggle("Fast Charging (Powerbank)", isOn: Binding(
+                Toggle("快速充电（移动电源）", isOn: Binding(
                     get: { viewModel.usbStatus.powerbankActive },
                     set: { newValue in
                         Task {
@@ -42,11 +42,11 @@ struct USBModeView: View {
                 ))
                 .disabled(viewModel.isLoading || !viewModel.usbStatus.cableAttached)
             } footer: {
-                Text("When enabled, the U60 Pro battery will charge your connected device. This will drain the router's battery faster.")
+                Text("启用后，U60 Pro 的电池会为连接的设备充电，这会更快消耗路由器电量。")
             }
         }
         .task { await viewModel.refresh() }
-        .navigationTitle("USB Mode")
+        .navigationTitle("USB 模式")
         .overlay {
             if viewModel.isLoading {
                 ProgressView()

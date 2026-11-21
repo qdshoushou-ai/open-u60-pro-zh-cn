@@ -32,7 +32,7 @@ const path = require('node:path');
     const original=Element.prototype.animate;
     Element.prototype.animate=function(...args){if(this.classList.contains('number-current'))window.__numberAnimations++;return original.apply(this,args);};
   });
-  const go=async key=>{await page.evaluate(key=>OpenU60Navigation.go(key),key);await page.waitForFunction(key=>document.documentElement.dataset.route===key,key);await page.waitForFunction(()=>document.querySelector('#stream-state').textContent==='Live');};
+  const go=async key=>{await page.evaluate(key=>OpenU60Navigation.go(key),key);await page.waitForFunction(key=>document.documentElement.dataset.route===key,key);await page.waitForFunction(()=>document.querySelector('#stream-state').dataset.state==='live');};
   const settled=()=>page.waitForFunction(()=>!document.querySelector('[data-number-animating]'));
   await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.waitForFunction(()=>document.querySelector('#download').textContent==='100.00');
   assert.equal(await page.evaluate(()=>window.__numberAnimations),0,'initial readings never count from invented zeroes');
@@ -81,7 +81,7 @@ const path = require('node:path');
   // Hiding the tab settles active visuals and never starts background animations.
   data.speed.rx_speed+=125000;push(['speed']);await page.waitForFunction(()=>document.querySelector('#download').hasAttribute('data-number-animating'));
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});await settled();
-  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});await page.waitForFunction(()=>document.querySelector('#stream-state').textContent==='Live');
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});await page.waitForFunction(()=>document.querySelector('#stream-state').dataset.state==='live');
   data.speed.rx_speed+=125000;push(['speed']);await page.waitForFunction(()=>document.querySelector('#download').hasAttribute('data-number-animating'));for(const stream of streams)stream.write('event: auth\ndata: {}\n\n');await page.waitForFunction(()=>document.querySelector('#login-dialog').open);await settled();await page.waitForTimeout(450);assert.equal(await page.locator('#download').textContent(),'—','no animation can restore values after locking');assert.equal(await page.locator('#diagnostic-health dd').first().textContent(),'—');
   assert.ok(requests.every(url=>url.startsWith('/api/dashboard/events')),'animations add no requests or polling');assert.deepEqual(errors,[]);
   await browser.close();clearInterval(heartbeat);for(const stream of streams)stream.destroy();server.close();

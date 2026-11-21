@@ -66,7 +66,7 @@ fn read_limit() -> Result<Value, String> {
     let raw = ubus::call(OBJECT, "get_wwandst_monthlimit", Some(&params))?;
     let object = raw
         .as_object()
-        .ok_or_else(|| "monthly limit response was not an object".to_string())?;
+        .ok_or_else(|| "月度限额响应不是对象".to_string())?;
     let bytes = numeric(object.get("value"));
     let warning_percent = numeric(object.get("ratio"));
     let enabled = flag(object.get("enable"));
@@ -89,7 +89,7 @@ fn read_cycle() -> Result<Value, String> {
     let raw = ubus::call(OBJECT, "get_wwandst_clearday", Some(&params))?;
     let object = raw
         .as_object()
-        .ok_or_else(|| "billing cycle response was not an object".to_string())?;
+        .ok_or_else(|| "账期响应不是对象".to_string())?;
     let enabled = flag(object.get("enable"));
     let reset_day = numeric(object.get("clearday"));
     Ok(json!({
@@ -137,24 +137,24 @@ struct LimitInput {
 
 fn parse_object(body: &[u8]) -> Result<Map<String, Value>, String> {
     serde_json::from_slice::<Value>(body)
-        .map_err(|_| "invalid JSON".to_string())?
+        .map_err(|_| "无效的 JSON".to_string())?
         .as_object()
         .cloned()
-        .ok_or_else(|| "request body must be an object".to_string())
+        .ok_or_else(|| "请求体必须为对象".to_string())
 }
 
 fn parse_limit(body: &[u8]) -> Result<LimitInput, String> {
     let object = parse_object(body)?;
     let enabled =
-        flag(object.get("enabled")).ok_or_else(|| "enabled must be true or false".to_string())?;
+        flag(object.get("enabled")).ok_or_else(|| "enabled 必须为 true 或 false".to_string())?;
     let bytes = numeric(object.get("bytes"))
         .filter(|bytes| *bytes > 0 && *bytes <= MAX_LIMIT_BYTES)
-        .ok_or_else(|| "bytes must be between 1 and 109951162777600".to_string())?;
+        .ok_or_else(|| "bytes 必须介于 1 和 109951162777600 之间".to_string())?;
     let warning_percent = numeric(object.get("warning_percent"))
         .filter(|ratio| (1..=100).contains(ratio))
-        .ok_or_else(|| "warning_percent must be between 1 and 100".to_string())?;
+        .ok_or_else(|| "warning_percent 必须介于 1 和 100 之间".to_string())?;
     let auto_disconnect = flag(object.get("auto_disconnect"))
-        .ok_or_else(|| "auto_disconnect must be true or false".to_string())?;
+        .ok_or_else(|| "auto_disconnect 必须为 true 或 false".to_string())?;
     Ok(LimitInput {
         enabled,
         bytes,
@@ -192,11 +192,11 @@ pub fn set_limit(_state: &AppState, body: &[u8]) -> (u16, Value) {
         }
         Ok(limit) => (
             503,
-            json!({"ok": false, "error": "the router did not confirm the monthly limit", "data": limit}),
+            json!({"ok": false, "error": "路由器未确认月度限额", "data": limit}),
         ),
         Err(error) => (
             503,
-            json!({"ok": false, "error": format!("the router accepted the change but readback failed: {error}")}),
+            json!({"ok": false, "error": format!("路由器已接受更改，但回读失败：{error}")}),
         ),
     }
 }
@@ -210,10 +210,10 @@ struct CycleInput {
 fn parse_cycle(body: &[u8]) -> Result<CycleInput, String> {
     let object = parse_object(body)?;
     let enabled =
-        flag(object.get("enabled")).ok_or_else(|| "enabled must be true or false".to_string())?;
+        flag(object.get("enabled")).ok_or_else(|| "enabled 必须为 true 或 false".to_string())?;
     let reset_day = numeric(object.get("reset_day"))
         .filter(|day| (1..=31).contains(day))
-        .ok_or_else(|| "reset_day must be between 1 and 31".to_string())?;
+        .ok_or_else(|| "reset_day 必须介于 1 和 31 之间".to_string())?;
     Ok(CycleInput { enabled, reset_day })
 }
 
@@ -241,11 +241,11 @@ pub fn set_cycle(_state: &AppState, body: &[u8]) -> (u16, Value) {
         }
         Ok(cycle) => (
             503,
-            json!({"ok": false, "error": "the router did not confirm the billing cycle", "data": cycle}),
+            json!({"ok": false, "error": "路由器未确认账期", "data": cycle}),
         ),
         Err(error) => (
             503,
-            json!({"ok": false, "error": format!("the router accepted the change but readback failed: {error}")}),
+            json!({"ok": false, "error": format!("路由器已接受更改，但回读失败：{error}")}),
         ),
     }
 }

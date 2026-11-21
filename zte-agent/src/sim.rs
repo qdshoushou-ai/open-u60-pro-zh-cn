@@ -42,7 +42,7 @@ pub fn sim_imei(_state: &AppState) -> (u16, Value) {
 pub fn sim_pin_verify(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call(
         "zwrt_zte_mdm.api",
@@ -59,7 +59,7 @@ pub fn sim_pin_verify(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn sim_pin_change(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call(
         "zwrt_zte_mdm.api",
@@ -76,7 +76,7 @@ pub fn sim_pin_change(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn sim_pin_mode(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call(
         "zwrt_zte_mdm.api",
@@ -93,7 +93,7 @@ pub fn sim_pin_mode(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn sim_unlock(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call(
         "zwrt_zte_mdm.api",

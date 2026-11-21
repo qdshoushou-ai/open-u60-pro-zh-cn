@@ -6,7 +6,7 @@ use crate::ubus;
 pub fn cell_lock_nr(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = crate::modem_ext::note_user_modem_change(state);
     match ubus::call("zte_nwinfo_api", "nwinfo_lock_nr_cell", Some(&parsed.to_string())) {
@@ -18,7 +18,7 @@ pub fn cell_lock_nr(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn cell_lock_lte(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = crate::modem_ext::note_user_modem_change(state);
     match ubus::call("zte_nwinfo_api", "nwinfo_lock_lte_cell", Some(&parsed.to_string())) {
@@ -59,7 +59,7 @@ pub fn cell_neighbors_lte(_state: &AppState) -> (u16, Value) {
 pub fn cell_band_nr(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zte_nwinfo_api", "nwinfo_set_nrbandlock", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -70,7 +70,7 @@ pub fn cell_band_nr(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn cell_band_lte(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zte_nwinfo_api", "nwinfo_set_gwl_bandlock", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -95,7 +95,7 @@ pub fn cell_stc_params_get(_state: &AppState) -> (u16, Value) {
 pub fn cell_stc_params_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zte_nwinfo_api", "nwinfo_set_stc_white_list_par", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),

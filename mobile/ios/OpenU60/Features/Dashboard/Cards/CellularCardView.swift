@@ -13,20 +13,20 @@ struct CellularCardView: View, Equatable {
     var compact = false
 
     private func trafficCaption(at now: Date) -> String {
-        guard let trafficUpdatedAt else { return "Live traffic unavailable" }
+        guard let trafficUpdatedAt else { return "实时流量不可用" }
         let age = max(0, Int(now.timeIntervalSince(trafficUpdatedAt)))
         if !isTrafficAvailable || age >= 5 {
-            return "Last traffic sample · \(age)s ago · waiting for device"
+            return "上次流量采样 · \(age)s 前 · 正在等待设备"
         }
-        return trafficStats.source == "wwandst" ? "Live cellular traffic · all devices"
-            : "Estimated cellular traffic · all devices"
+        return trafficStats.source == "wwandst" ? "实时蜂窝流量 · 全部设备"
+            : "估算蜂窝流量 · 全部设备"
     }
 
     var body: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Label(compact ? "Live traffic" : "Cellular Connection", systemImage: "arrow.up.arrow.down")
+                    Label(compact ? "实时流量" : "蜂窝连接", systemImage: "arrow.up.arrow.down")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     if compact { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary) }
@@ -63,7 +63,7 @@ struct CellularCardView: View, Equatable {
                             .foregroundStyle(.blue)
                         LiveTrafficValue(bytesPerSecond: trafficUpdatedAt == nil ? nil : speed.downloadBytesPerSec,
                                          sampleInterval: trafficSampleInterval)
-                        Text("Download")
+                        Text("下载")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -76,7 +76,7 @@ struct CellularCardView: View, Equatable {
                             .foregroundStyle(.blue)
                         LiveTrafficValue(bytesPerSecond: trafficUpdatedAt == nil ? nil : speed.uploadBytesPerSec,
                                          sampleInterval: trafficSampleInterval)
-                        Text("Upload")
+                        Text("上传")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -93,9 +93,9 @@ struct CellularCardView: View, Equatable {
 
                 // The totals advance on the same poll as the live values, so they share its
                 // measured cadence. `AnimatedNumber` now crossfades the unit itself.
-                TrafficTotalRow(label: "Total DL", bytes: trafficStats.rxBytes,
+                TrafficTotalRow(label: "累计下行", bytes: trafficStats.rxBytes,
                                 sampleInterval: trafficSampleInterval)
-                TrafficTotalRow(label: "Total UL", bytes: trafficStats.txBytes,
+                TrafficTotalRow(label: "累计上行", bytes: trafficStats.txBytes,
                                 sampleInterval: trafficSampleInterval)
             }
         }

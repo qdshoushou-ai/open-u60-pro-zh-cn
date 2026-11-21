@@ -55,7 +55,7 @@ pub fn router_lan_get(_state: &AppState) -> (u16, Value) {
             map.get(key)
                 .filter(|value| !value.is_empty())
                 .cloned()
-                .ok_or_else(|| format!("LAN setting {key} is unavailable"))
+                .ok_or_else(|| format!("LAN 设置 {key} 不可用"))
         };
         let ip = required(&network, "network.lan.ipaddr")?;
         let mask = required(&network, "network.lan.netmask")?;
@@ -63,7 +63,7 @@ pub fn router_lan_get(_state: &AppState) -> (u16, Value) {
         let limit = required(&dhcp, "dhcp.lan.limit")?;
         let lease = required(&dhcp, "dhcp.lan.leasetime")?;
         let end = strict_compute_dhcp_end(&ip, &mask, &start, &limit)
-            .ok_or_else(|| "The reported DHCP pool is invalid".to_string())?;
+            .ok_or_else(|| "上报的 DHCP 地址池无效".to_string())?;
         Ok((
             ip,
             mask,
@@ -126,7 +126,7 @@ pub fn router_lan_set(state: &AppState, body: &[u8]) -> (u16, Value) {
 fn lan_set_with(state: &AppState, body: &[u8], apply: impl FnOnce(&str) -> Result<Value, String>) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match apply(&parsed.to_string()) {
         Ok(data) => {
@@ -151,7 +151,7 @@ pub fn router_firewall_get(_state: &AppState) -> (u16, Value) {
 pub fn router_firewall_switch_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_firewall_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -162,7 +162,7 @@ pub fn router_firewall_switch_set(_state: &AppState, body: &[u8]) -> (u16, Value
 pub fn router_firewall_level_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_firewall_level", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -173,7 +173,7 @@ pub fn router_firewall_level_set(_state: &AppState, body: &[u8]) -> (u16, Value)
 pub fn router_firewall_nat_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_nat_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -184,7 +184,7 @@ pub fn router_firewall_nat_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn router_firewall_dmz_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_dmz", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -202,7 +202,7 @@ pub fn router_firewall_upnp_get(_state: &AppState) -> (u16, Value) {
 pub fn router_firewall_upnp_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_upnp_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -220,7 +220,7 @@ pub fn router_firewall_port_forward_get(_state: &AppState) -> (u16, Value) {
 pub fn router_firewall_port_forward_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let mut parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     // Rule ids can be array positions. Serialize agent writes and check the browser's
     // reviewed list immediately before deleting; native callers may omit this guard.
@@ -233,7 +233,7 @@ pub fn router_firewall_port_forward_set(_state: &AppState, body: &[u8]) -> (u16,
         if parsed["action"] != "delete" || !expected.is_array() {
             return (
                 400,
-                json!({"ok":false,"error":"expected_rules requires a delete and a rule array"}),
+                json!({"ok":false,"error":"expected_rules 需要 delete 和规则数组"}),
             );
         }
         let current = match ubus::call("zwrt_router.api", "router_get_portforward_rule", Some("{}"))
@@ -244,7 +244,7 @@ pub fn router_firewall_port_forward_set(_state: &AppState, body: &[u8]) -> (u16,
         if !reviewed_port_rules_match(&expected, &current, &parsed["id"]) {
             return (
                 409,
-                json!({"ok":false,"error":"Port-forward rules changed. Review the current list before deleting."}),
+                json!({"ok":false,"error":"端口转发规则已更改。删除前请先查看当前列表。"}),
             );
         }
     }
@@ -261,7 +261,7 @@ pub fn router_firewall_port_forward_set(_state: &AppState, body: &[u8]) -> (u16,
 pub fn router_firewall_port_forward_switch(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_portforward_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -286,7 +286,7 @@ pub fn router_vpn_get(_state: &AppState) -> (u16, Value) {
 pub fn router_vpn_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_alg_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -304,7 +304,7 @@ pub fn router_qos_get(_state: &AppState) -> (u16, Value) {
 pub fn router_qos_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_qos_switch", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -322,7 +322,7 @@ pub fn router_domain_filter_get(_state: &AppState) -> (u16, Value) {
 pub fn router_domain_filter_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_router.api", "router_set_domain_filter", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -340,7 +340,7 @@ pub fn router_apn_mode_get(_state: &AppState) -> (u16, Value) {
 pub fn router_apn_mode_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_apn_object", "set_apn_mode", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -358,7 +358,7 @@ pub fn router_apn_profiles_get(_state: &AppState) -> (u16, Value) {
 pub fn router_apn_profiles_add(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_apn_object", "add_manu_apn", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -369,7 +369,7 @@ pub fn router_apn_profiles_add(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn router_apn_profiles_modify(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_apn_object", "modify_manu_apn", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -387,7 +387,7 @@ pub fn router_apn_auto_profiles(_state: &AppState) -> (u16, Value) {
 pub fn router_apn_profiles_delete(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_apn_object", "delete_manu_apn", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -398,7 +398,7 @@ pub fn router_apn_profiles_delete(_state: &AppState, body: &[u8]) -> (u16, Value
 pub fn router_apn_profiles_activate(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_apn_object", "enable_manu_apn_id", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -427,7 +427,7 @@ mod tests {
         assert_eq!(status, 200);
         assert!(sent.borrow().contains("\"lan_ipaddr\":\"192.168.8.1\""));
         assert_eq!(w.hosts_file().as_deref(), Some("192.168.8.1 u60.home.arpa\n"));
-        assert!(state.tls.status().error.unwrap().contains("now 192.168.8.1"));
+        assert!(state.tls.status().error.unwrap().contains("现已更改为 192.168.8.1"));
     }
 
     use super::compute_dhcp_end;

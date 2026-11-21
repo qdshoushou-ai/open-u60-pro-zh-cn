@@ -83,7 +83,7 @@ const FAST_BOOT_RETRY_INTERVAL: Duration = Duration::from_secs(60);
 /// Logged and returned by `config_set` when the watchdog is enabled on a
 /// unit where nothing will ever feed it a probe result.
 const NO_PROBE_WARNING: &str =
-    "enabled but no probe source is attached (Live Activity provider + agent password required)";
+    "已启用但未附加探测来源（需要实时活动提供方和 Agent 密码）";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -163,10 +163,10 @@ impl Config {
     pub fn patched(&self, patch: &Value) -> Result<Config, String> {
         let mut next = self.clone();
         if let Some(v) = patch.get("enabled") {
-            next.enabled = v.as_bool().ok_or("enabled must be a boolean")?;
+            next.enabled = v.as_bool().ok_or("enabled 必须为布尔值")?;
         }
         if let Some(v) = patch.get("allow_reboot") {
-            next.allow_reboot = v.as_bool().ok_or("allow_reboot must be a boolean")?;
+            next.allow_reboot = v.as_bool().ok_or("allow_reboot 必须为布尔值")?;
         }
         Ok(next)
     }
@@ -1237,7 +1237,7 @@ pub fn config_get(watchdog: &ConnWatchdog) -> (u16, Value) {
 pub fn config_set(watchdog: &ConnWatchdog, body: &[u8]) -> (u16, Value) {
     let patch: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match watchdog.update(&patch) {
         Ok(config) => {
@@ -1908,7 +1908,7 @@ mod tests {
         let r = bring_online(
             || {
                 attempts.fetch_add(1, Ordering::Relaxed);
-                Err("no serial port found".into())
+                Err("未找到串口".into())
             },
             || Some("ONLINE".into()),
             || panic!("fallback not expected"),
@@ -1971,7 +1971,7 @@ mod tests {
         assert_eq!(body["data"]["status"]["probe_source"], "none");
         assert!(body["data"]["warning"]
             .as_str()
-            .is_some_and(|w| w.contains("no probe source")));
+            .is_some_and(|w| w.contains("未附加探测来源")));
         // Disabling never warns.
         let (_, body) = config_set(&watchdog, br#"{"enabled": false}"#);
         assert!(body["data"].get("warning").is_none());

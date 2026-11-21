@@ -442,15 +442,15 @@ async fn sim_toolkit_selects_once_and_follows_the_worker() {
     b.assert_see_other(SVC);
     assert_eq!(calls(&c), [("/api/stk/select".to_owned(), json!({"command_id": "1700000000001", "item_id": 2}))]);
     // The SIM works: dimmed buttons, and a reload without JavaScript.
-    let _fake = fake::set(&c.app, stk("status", "1700000000002", json!({"busy": true, "reason": "Waiting for the SIM", "status": "waiting"})));
+    let _fake = fake::set(&c.app, stk("status", "1700000000002", json!({"busy": true, "reason": "正在等待 SIM", "status": "waiting"})));
     let html = get_with(&c, SVC, peer(155, 4), &cookie).await.text();
     let reload = "<noscript><meta http-equiv=\"refresh\" content=\"3; url=/ui/router/sim-services?t=";
-    assert!(html.contains("Waiting for the SIM") && html.contains(reload), "{html}");
+    assert!(html.contains("正在等待 SIM") && html.contains(reload), "{html}");
     // A submenu arrives live: the section is patched with its buttons.
     let resp = open_live(&c, &live_url(&html, "simservices"), peer(155, 5), &cookie).await;
     assert_eq!(c.app.hub.demand(Topic::Stk), 1);
     let mut s = resp.into_body().into_data_stream();
-    assert!(frame(&mut s).await.unwrap().contains("Waiting for the SIM"));
+    assert!(frame(&mut s).await.unwrap().contains("正在等待 SIM"));
     let sub = stk("menu", "1700000000003", json!({"root_menu": false, "items": [{"id": 5, "label": "1 GB"}]}));
     c.app.hub.offer(Topic::Stk, ReadOut { value: Some(sub), error: None }, std::time::Instant::now());
     let next = frame(&mut s).await.unwrap();
@@ -461,7 +461,7 @@ async fn sim_toolkit_selects_once_and_follows_the_worker() {
     drop(s);
     // A failure: its line, and the page does not reconnect (`held=1`).
     let _dev = device::set(&c.app, device::Device {
-        replies: vec![("/api/stk/back", (409, json!({"ok": false, "error": "stale or missing command_id; reload the SIM menu"})))],
+        replies: vec![("/api/stk/back", (409, json!({"ok": false, "error": "command_id 已过期或缺失；请重新加载 SIM 菜单"})))],
         gets: vec![("/api/stk/menu", Err("must not be read".into()))],
         ..Default::default()
     });

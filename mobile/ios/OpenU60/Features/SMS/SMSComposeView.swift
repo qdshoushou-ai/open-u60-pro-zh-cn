@@ -14,21 +14,21 @@ struct SMSComposeView: View {
         let maxPerSegment = encType == "UNICODE" ? 67 : 153
         let maxTotal = encType == "UNICODE" ? 335 : 765
         let segments = messageText.isEmpty ? 0 : (messageText.count + maxPerSegment - 1) / maxPerSegment
-        return "\(messageText.count)/\(maxTotal) (\(segments) SMS)"
+        return "\(messageText.count)/\(maxTotal)（\(segments) 条短信）"
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Phone Number", text: $number)
+                    TextField("电话号码", text: $number)
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
                         .focused($focusedField, equals: .number)
                 }
 
                 Section {
-                    TextField("Message", text: $messageText, axis: .vertical)
+                    TextField("消息", text: $messageText, axis: .vertical)
                         .lineLimit(3...10)
                         .focused($focusedField, equals: .message)
                 } footer: {
@@ -51,7 +51,7 @@ struct SMSComposeView: View {
                                 ProgressView()
                                     .padding(.trailing, 8)
                             }
-                            Text("Send")
+                            Text("发送")
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -71,11 +71,11 @@ struct SMSComposeView: View {
                     }
                 }
             }
-            .navigationTitle("New Message")
+            .navigationTitle("新建消息")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("取消") { dismiss() }
                 }
             }
             .onAppear { focusedField = .number }

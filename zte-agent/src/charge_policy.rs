@@ -386,10 +386,10 @@ impl ChargeLimitEnforcer {
 
     pub fn set(&self, enabled: bool, limit: u8, hysteresis: u8) -> Result<(), String> {
         if limit < 50 || limit > 100 {
-            return Err("limit must be 50-100".into());
+            return Err("充电上限必须为 50-100".into());
         }
         if hysteresis < 1 || hysteresis > 20 {
-            return Err("hysteresis must be 1-20".into());
+            return Err("回差必须为 1-20".into());
         }
         let mut state = self.inner.lock().unwrap();
         state.enabled = enabled;

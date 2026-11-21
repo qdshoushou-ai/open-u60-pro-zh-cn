@@ -5,11 +5,11 @@ struct SignalActivityControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("Live signal", systemImage: "antenna.radiowaves.left.and.right")
+                Label("实时信号", systemImage: "antenna.radiowaves.left.and.right")
                     .font(.headline)
                 Spacer()
                 if manager.isBusy { ProgressView() }
-                Button(manager.activity == nil ? "Start" : "Stop") {
+                Button(manager.activity == nil ? "启动" : "停止") {
                     Task {
                         if manager.activity == nil { await manager.start() }
                         else { await manager.stop() }
@@ -23,20 +23,20 @@ struct SignalActivityControl: View {
             if let error = manager.errorMessage {
                 Text(error).font(.caption).foregroundStyle(.orange)
                 if manager.activity != nil {
-                    Button("Retry") { Task { await manager.resume() } }
+                    Button("重试") { Task { await manager.resume() } }
                         .font(.caption)
                 }
             }
             if let sampled = manager.displayedSampleAt {
                 HStack {
-                    Text(manager.isStale ? "Phone sample · Stale" : "Phone sample")
+                    Text(manager.isStale ? "手机采样 · 已过期" : "手机采样")
                     Text(sampled, style: .time)
                 }
                 .font(.caption2)
                 .foregroundStyle(manager.isStale ? Color.orange : Color.secondary)
             }
             if let accepted = manager.lastAcceptedAt {
-                Text("Apple accepted an update \(accepted, style: .relative) ago")
+                Text("Apple 已受理更新，\(accepted, style: .relative)")
                     .font(.caption2).foregroundStyle(.secondary)
             }
         }

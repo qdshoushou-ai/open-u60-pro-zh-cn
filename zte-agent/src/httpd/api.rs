@@ -101,7 +101,7 @@ pub async fn api_entry(State(ctx): State<Ctx>, req: Request) -> Response {
                     headers,
                     body.into_data_stream(),
                     0,
-                    json_reply(415, &server::error_body("choose a JPEG or PNG QR image")),
+                    json_reply(415, &server::error_body("请选择 JPEG 或 PNG 格式的二维码图片")),
                 )
                 .await;
             }
@@ -143,7 +143,7 @@ pub async fn api_entry(State(ctx): State<Ctx>, req: Request) -> Response {
             // HEAD, OPTIONS, PATCH...: route() has no arm for them. Answered
             // here so a reachability probe never waits for a lane.
             if method == Method::Other {
-                return json_reply(404, &server::error_body("not found"));
+                return json_reply(404, &server::error_body("未找到"));
             }
             let lane = server::lane(method, path);
             let path = path.to_owned();
@@ -176,7 +176,7 @@ fn events(ctx: &Ctx, owner: SessionId, query: Option<&str>) -> Response {
     let sub = match hub.subscribe(SubscribeReq { owner, topics, signal_hint, replace_same: Some(0) }) {
         Ok(sub) => sub,
         Err(Refused::Full) => {
-            let mut resp = json_reply(503, &server::error_body("too many event streams"));
+            let mut resp = json_reply(503, &server::error_body("事件流过多"));
             resp.headers_mut().insert(RETRY_AFTER, HeaderValue::from(EVENTS_RETRY_AFTER));
             return resp;
         }
@@ -222,17 +222,17 @@ fn events_query(query: Option<&str>) -> Result<(TopicSet, Option<Duration>), Str
             None if name.is_empty() => {}
             None => {
                 let end = name.char_indices().nth(32).map_or(name.len(), |(i, _)| i);
-                return Err(format!("unknown topic: {}", &name[..end]));
+                return Err(format!("未知主题：{}", &name[..end]));
             }
         }
     }
     if set.is_empty() {
-        return Err("topics required".into());
+        return Err("需要 topics 参数".into());
     }
     let hint = match signal_ms.map(str::parse::<u64>) {
         None => None,
         Some(Ok(ms @ 1000..=10_000)) => Some(Duration::from_millis(ms)),
-        Some(_) => return Err("signal_ms must be 1000-10000".into()),
+        Some(_) => return Err("signal_ms 必须为 1000-10000".into()),
     };
     Ok((set, hint))
 }
@@ -279,7 +279,7 @@ pub fn json_reply(status: u16, body: &Value) -> Response {
 }
 
 fn busy() -> Response {
-    let mut resp = json_reply(503, &server::error_body("agent busy, retry"));
+    let mut resp = json_reply(503, &server::error_body("Agent 繁忙，请重试"));
     resp.headers_mut().insert(RETRY_AFTER, HeaderValue::from(1));
     resp
 }
@@ -288,7 +288,7 @@ fn gated(r: Result<Encoded, GateError>) -> Response {
     match r {
         Ok(enc) => enc.into_response(),
         Err(GateError::Busy) => busy(),
-        Err(GateError::Panicked) => json_reply(500, &server::error_body("internal error")),
+        Err(GateError::Panicked) => json_reply(500, &server::error_body("内部错误")),
     }
 }
 
@@ -362,10 +362,10 @@ pub(crate) async fn read_capped(
 async fn read_failed(headers: &HeaderMap, e: ReadErr) -> Response {
     match e {
         ReadErr::TooLarge { read, rest } => {
-            let resp = json_reply(413, &server::error_body("body too large"));
+            let resp = json_reply(413, &server::error_body("请求体过大"));
             finish_early(headers, rest, read, resp).await
         }
-        ReadErr::Failed => close(json_reply(400, &server::error_body("incomplete body"))),
+        ReadErr::Failed => close(json_reply(400, &server::error_body("请求体不完整"))),
     }
 }
 
@@ -512,9 +512,9 @@ mod tests {
         // No 405 and no trailing-slash or HEAD-to-GET routing: always 404.
         for (method, uri) in [("DELETE", "/api/device"), ("GET", "/api/device/"), ("GET", "/nope"), ("PATCH", "/api/device")] {
             let r = send(&c, req(method, uri, peer(1, 2)).body(Body::empty()).unwrap()).await;
-            r.assert_json(404, err("not found"));
+            r.assert_json(404, err("未找到"));
         }
-        get(&c, "/api/live-activity", peer(1, 3)).await.assert_json(403, err("agent password required"));
+        get(&c, "/api/live-activity", peer(1, 3)).await.assert_json(403, err("需要 Agent 密码"));
         let r = get(&c, "/api/esim/switch", peer(1, 4)).await;
         assert_eq!(r.status, 200);
         assert_eq!(r.json()["data"]["state"], "idle");
@@ -536,7 +536,7 @@ mod tests {
             let r = tokio::time::timeout(Duration::from_secs(5), send(&c, r)).await.unwrap();
             assert_eq!(r.status, 404);
             assert_eq!(r.header("content-type"), Some("application/json"));
-            let not_found = serde_json::to_vec(&err("not found")).unwrap();
+            let not_found = serde_json::to_vec(&err("未找到")).unwrap();
             assert_eq!(not_found.len(), 32);
             if method == "HEAD" {
                 // HEAD: the length of the body that is not sent.
@@ -549,7 +549,7 @@ mod tests {
         // A gated call with no free permit: busy after the wait.
         c.gate = Arc::new(Gate::new(0, 0, Duration::from_millis(20)));
         let r = get(&c, "/api/doh/status", peer(2, 2)).await;
-        r.assert_json(503, err("agent busy, retry"));
+        r.assert_json(503, err("Agent 繁忙，请重试"));
         assert_eq!(r.header("retry-after"), Some("1"));
     }
 
@@ -557,18 +557,18 @@ mod tests {
     async fn auth_with_password() {
         let c = ctx(Some(PW));
         let tok = token(&c, 3);
-        get(&c, "/api/device", peer(3, 1)).await.assert_json(401, err("unauthorized"));
+        get(&c, "/api/device", peer(3, 1)).await.assert_json(401, err("未授权"));
         let lower = req("GET", "/api/device", peer(3, 2)).header("authorization", format!("bearer {tok}"));
-        send(&c, lower.body(Body::empty()).unwrap()).await.assert_json(401, err("unauthorized"));
+        send(&c, lower.body(Body::empty()).unwrap()).await.assert_json(401, err("未授权"));
         let r = send(&c, req("HEAD", "/api/device", peer(3, 3)).body(Body::empty()).unwrap()).await;
         assert_eq!(r.status, 401);
         assert_eq!(r.header("content-type"), Some("application/json"));
-        assert_eq!(r.header("content-length"), Some(serde_json::to_vec(&err("unauthorized")).unwrap().len().to_string().as_str()));
+        assert_eq!(r.header("content-length"), Some(serde_json::to_vec(&err("未授权")).unwrap().len().to_string().as_str()));
         assert!(r.body.is_empty());
         let r = send(&c, req("OPTIONS", "/api/device", peer(3, 4)).body(Body::empty()).unwrap()).await;
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         // The login path is exempt from the token check but has no GET.
-        get(&c, "/api/auth/login", peer(3, 5)).await.assert_json(404, err("not found"));
+        get(&c, "/api/auth/login", peer(3, 5)).await.assert_json(404, err("未找到"));
         // With a token: the old routes answer.
         let ok = req("GET", "/api/doh/status", peer(3, 6)).header("authorization", format!("Bearer {tok}"));
         let r = send(&c, ok.body(Body::empty()).unwrap()).await;
@@ -590,9 +590,9 @@ mod tests {
     #[tokio::test]
     async fn login_replies() {
         let c = ctx(Some(PW));
-        send(&c, login(4, 1, "{}")).await.assert_json(400, err("missing 'password' field"));
-        send(&c, login(4, 2, "not json")).await.assert_json(400, err("invalid JSON"));
-        send(&c, login(4, 3, r#"{"password":"wrong"}"#)).await.assert_json(401, err("invalid password"));
+        send(&c, login(4, 1, "{}")).await.assert_json(400, err("缺少字段 password"));
+        send(&c, login(4, 2, "not json")).await.assert_json(400, err("无效的 JSON"));
+        send(&c, login(4, 3, r#"{"password":"wrong"}"#)).await.assert_json(401, err("密码无效"));
         let r = send(&c, login(4, 4, &format!(r#"{{"password":"{PW}"}}"#))).await;
         assert_eq!((r.status, r.header("content-type")), (200, Some("application/json")));
         let tok = r.json()["data"]["token"].as_str().unwrap().to_owned();
@@ -600,7 +600,7 @@ mod tests {
         assert!(c.app.auth.validate(&tok));
         // Over the login cap.
         let big = format!(r#"{{"password":"{PW}"}}"#) + &" ".repeat(LOGIN_BODY_MAX);
-        send(&c, login(4, 5, &big)).await.assert_json(413, err("body too large"));
+        send(&c, login(4, 5, &big)).await.assert_json(413, err("请求体过大"));
     }
 
     #[tokio::test]
@@ -611,10 +611,10 @@ mod tests {
         st.auth.set_password(PW);
         let c = Ctx::new(Arc::new(st), 2);
         for _ in 0..5 {
-            send(&c, login(5, 1, r#"{"password":"wrong"}"#)).await.assert_json(401, err("invalid password"));
+            send(&c, login(5, 1, r#"{"password":"wrong"}"#)).await.assert_json(401, err("密码无效"));
         }
         let r = send(&c, login(5, 1, r#"{"password":"wrong"}"#)).await;
-        r.assert_json(429, json!({"ok": false, "error": "too many login attempts", "retry_after": 1}));
+        r.assert_json(429, json!({"ok": false, "error": "登录尝试过多", "retry_after": 1}));
         assert_eq!(r.header("retry-after"), Some("1"));
         // Another peer is not affected.
         let r = send(&c, login(5, 2, &format!(r#"{{"password":"{PW}"}}"#))).await;
@@ -628,10 +628,10 @@ mod tests {
         let with_body = |method: &str, uri: &str, n: usize| {
             req(method, uri, peer(6, 1)).header("authorization", &auth).body(Body::from(vec![b'x'; n])).unwrap()
         };
-        send(&c, with_body("PUT", "/api/live-activity", 4097)).await.assert_json(413, err("body too large"));
-        send(&c, with_body("PUT", "/api/live-activity/nowhere", 4096)).await.assert_json(404, err("not found"));
-        send(&c, with_body("POST", "/api/scheduler/jobs", 65_537)).await.assert_json(413, err("body too large"));
-        send(&c, with_body("POST", "/api/nowhere", 65_536)).await.assert_json(404, err("not found"));
+        send(&c, with_body("PUT", "/api/live-activity", 4097)).await.assert_json(413, err("请求体过大"));
+        send(&c, with_body("PUT", "/api/live-activity/nowhere", 4096)).await.assert_json(404, err("未找到"));
+        send(&c, with_body("POST", "/api/scheduler/jobs", 65_537)).await.assert_json(413, err("请求体过大"));
+        send(&c, with_body("POST", "/api/nowhere", 65_536)).await.assert_json(404, err("未找到"));
         // A declared length over the cap is refused without reading.
         let declared = req("POST", "/api/scheduler/jobs", peer(6, 2))
             .header("authorization", &auth)
@@ -639,7 +639,7 @@ mod tests {
             .body(Body::from(vec![b'x'; 65_537]))
             .unwrap();
         let r = send(&c, declared).await;
-        r.assert_json(413, err("body too large"));
+        r.assert_json(413, err("请求体过大"));
         // Drained (small), so the connection may stay open.
         assert_eq!(r.header("connection"), None);
     }
@@ -660,7 +660,7 @@ mod tests {
 
         send(&c, upload("application/octet-stream", Body::from("not an image")))
             .await
-            .assert_json(415, err("choose a JPEG or PNG QR image"));
+            .assert_json(415, err("请选择 JPEG 或 PNG 格式的二维码图片"));
 
         let too_large = req("POST", "/api/esim/qr", peer(16, 2))
             .header("authorization", &auth)
@@ -670,7 +670,7 @@ mod tests {
             .unwrap();
         send(&c, too_large)
             .await
-            .assert_json(413, err("body too large"));
+            .assert_json(413, err("请求体过大"));
 
         let grey = photo(520, 520, CODE, 5.0, 0.0, false);
         let image = png(&grey, 520, 520, false);
@@ -696,7 +696,7 @@ mod tests {
         let r = req("POST", "/api/device/reboot", peer(9, 1)).header("transfer-encoding", "chunked");
         let started = tokio::time::Instant::now();
         let r = send(&c, r.body(stalled_body()).unwrap()).await;
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         assert_eq!(r.header("connection"), Some("close"));
         assert_eq!(started.elapsed(), DRAIN_WAIT);
     }
@@ -707,7 +707,7 @@ mod tests {
         let started = tokio::time::Instant::now();
         let r = req("POST", "/api/nowhere", peer(9, 2)).header("content-length", "100");
         let r = send(&c, r.body(stalled_body()).unwrap()).await;
-        r.assert_json(400, err("incomplete body"));
+        r.assert_json(400, err("请求体不完整"));
         assert_eq!(r.header("connection"), Some("close"));
         assert_eq!(started.elapsed(), BODY_WAIT);
         // A LAN upload counts what came before the pause.
@@ -748,8 +748,8 @@ mod tests {
         let first = open().await;
         let second = open().await;
         assert_eq!((first.status(), second.status()), (StatusCode::OK, StatusCode::OK));
-        reply(open().await).await.assert_json(503, err("agent busy, retry"));
-        send(&c, upload(10)).await.assert_json(503, err("agent busy, retry"));
+        reply(open().await).await.assert_json(503, err("Agent 繁忙，请重试"));
+        send(&c, upload(10)).await.assert_json(503, err("Agent 繁忙，请重试"));
         drop(first);
         assert_eq!(open().await.status(), StatusCode::OK);
         drop(second);
@@ -759,21 +759,21 @@ mod tests {
     async fn host_and_origin_checks_without_password() {
         let c = ctx(None);
         let reboot = req("POST", "/api/device/reboot", peer(8, 1)).header("origin", "http://evil");
-        send(&c, reboot.body(Body::empty()).unwrap()).await.assert_json(403, err("cross-origin request refused"));
+        send(&c, reboot.body(Body::empty()).unwrap()).await.assert_json(403, err("跨源请求被拒绝"));
         let evil = axum::http::Request::builder()
             .uri("/api/device")
             .header("host", "evil.example")
             .extension(peer(8, 2));
-        send(&c, evil.body(Body::empty()).unwrap()).await.assert_json(403, err("host not allowed"));
+        send(&c, evil.body(Body::empty()).unwrap()).await.assert_json(403, err("不允许的主机"));
         let no_host = axum::http::Request::builder().uri("/api/device").extension(peer(8, 3));
-        send(&c, no_host.body(Body::empty()).unwrap()).await.assert_json(400, err("missing host"));
+        send(&c, no_host.body(Body::empty()).unwrap()).await.assert_json(400, err("缺少 Host 头"));
         // Names the device answers to pass, `localhost` only from itself.
         let local = |p: Peer| {
             axum::http::Request::builder().uri("/api/lan/ping").header("host", "localhost:9090").extension(p)
         };
         let lo = Peer(SocketAddr::from(([127, 0, 0, 1], 5000)));
         send(&c, local(lo).body(Body::empty()).unwrap()).await.assert_json(200, json!({"ok": true}));
-        send(&c, local(peer(8, 4)).body(Body::empty()).unwrap()).await.assert_json(403, err("host not allowed"));
+        send(&c, local(peer(8, 4)).body(Body::empty()).unwrap()).await.assert_json(403, err("不允许的主机"));
     }
 
     #[tokio::test]
@@ -791,7 +791,7 @@ mod tests {
                 .unwrap()
         };
         for n in 0..40 {
-            send(&c, rebound(n)).await.assert_json(403, err("host not allowed"));
+            send(&c, rebound(n)).await.assert_json(403, err("不允许的主机"));
         }
         // Nothing reached the limiter: an app (no Origin, any name) logs in.
         let app = axum::http::Request::builder()
@@ -905,27 +905,27 @@ mod tests {
     async fn events_refusals() {
         let c = ctx(Some(PW));
         let tok = token(&c, 20);
-        get(&c, "/api/events?topics=sms", peer(20, 1)).await.assert_json(401, err("unauthorized"));
+        get(&c, "/api/events?topics=sms", peer(20, 1)).await.assert_json(401, err("未授权"));
         let long = "x".repeat(40);
         let cases = [
-            ("/api/events", "topics required"),
-            ("/api/events?topics=", "topics required"),
-            ("/api/events?topics=%20,%20&signal_ms=2000", "topics required"),
-            ("/api/events?topic=sms", "topics required"),
-            ("/api/events?topics=signal,wifi", "unknown topic: wifi"),
-            ("/api/events?topics=signal&signal_ms=999", "signal_ms must be 1000-10000"),
-            ("/api/events?topics=signal&signal_ms=10001", "signal_ms must be 1000-10000"),
-            ("/api/events?topics=signal&signal_ms=2s", "signal_ms must be 1000-10000"),
+            ("/api/events", "需要 topics 参数"),
+            ("/api/events?topics=", "需要 topics 参数"),
+            ("/api/events?topics=%20,%20&signal_ms=2000", "需要 topics 参数"),
+            ("/api/events?topic=sms", "需要 topics 参数"),
+            ("/api/events?topics=signal,wifi", "未知主题：wifi"),
+            ("/api/events?topics=signal&signal_ms=999", "signal_ms 必须为 1000-10000"),
+            ("/api/events?topics=signal&signal_ms=10001", "signal_ms 必须为 1000-10000"),
+            ("/api/events?topics=signal&signal_ms=2s", "signal_ms 必须为 1000-10000"),
         ];
         for (uri, e) in cases {
             reply(open_events(&c, uri, &tok, peer(20, 2)).await).await.assert_json(400, err(e));
         }
         let uri = format!("/api/events?topics={long}");
         let r = reply(open_events(&c, &uri, &tok, peer(20, 3)).await).await;
-        r.assert_json(400, err(&format!("unknown topic: {}", &long[..32])));
+        r.assert_json(400, err(&format!("未知主题：{}", &long[..32])));
         // Streams need a token: without a password there is none.
         let open = ctx(None);
-        get(&open, "/api/events?topics=sms", peer(20, 4)).await.assert_json(403, err("agent password required"));
+        get(&open, "/api/events?topics=sms", peer(20, 4)).await.assert_json(403, err("需要 Agent 密码"));
         assert_eq!(c.app.hub.demand(Topic::Sms), 0);
     }
 
@@ -977,7 +977,7 @@ mod tests {
             open.push(r);
         }
         let r = reply(open_events(&c, "/api/events?topics=sms", &token(&c, 22), peer(22, 99)).await).await;
-        r.assert_json(503, err("too many event streams"));
+        r.assert_json(503, err("事件流过多"));
         assert_eq!(r.header("retry-after"), Some("10"));
         drop(open.pop());
         let r = open_events(&c, "/api/events?topics=sms", &token(&c, 22), peer(22, 98)).await;
@@ -1031,12 +1031,12 @@ mod tests {
         assert_eq!(q("topics=%73ms%2c%20wan&topics=battery"), Ok((set(&[Topic::Sms, Topic::Wan]), None)));
         assert_eq!(q("signal_ms=1000&topics=signal"), Ok((set(&[Topic::Signal]), Some(Duration::from_secs(1)))));
         assert_eq!(q("topics=signal&signal_ms=10000"), Ok((set(&[Topic::Signal]), Some(Duration::from_secs(10)))));
-        assert_eq!(q("topics=sms,%"), Err("unknown topic: %".into()));
-        assert_eq!(events_query(None), Err("topics required".into()));
+        assert_eq!(q("topics=sms,%"), Err("未知主题：%".into()));
+        assert_eq!(events_query(None), Err("需要 topics 参数".into()));
         assert_eq!(percent_decode("a%2Cb+c%zz%4"), "a,b c%zz%4");
         assert_eq!(percent_decode("%e2%82%ac%ff"), "\u{20ac}\u{fffd}");
         // Not UTF-8: unknown, shown lossily.
-        assert_eq!(q("topics=sms,%ff"), Err("unknown topic: \u{fffd}".into()));
+        assert_eq!(q("topics=sms,%ff"), Err("未知主题：�".into()));
     }
 
     #[test]
@@ -1047,7 +1047,7 @@ mod tests {
         assert_eq!(panicked.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let body = futures_util::FutureExt::now_or_never(axum::body::to_bytes(panicked.into_body(), 64));
         // serde_json sorts keys (as the old listener's replies did).
-        assert_eq!(&body.unwrap().unwrap()[..], br#"{"error":"internal error","ok":false}"#);
+        assert_eq!(&body.unwrap().unwrap()[..], r#"{"error":"内部错误","ok":false}"#.as_bytes());
     }
 
     #[test]

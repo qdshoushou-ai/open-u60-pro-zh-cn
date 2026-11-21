@@ -86,16 +86,16 @@ impl DohProxy {
 
     pub fn start(self: &Arc<Self>) -> Result<(), String> {
         if self.running.load(Ordering::Relaxed) {
-            return Err("already running".to_string());
+            return Err("已在运行".to_string());
         }
 
         let addr = self.config.lock().unwrap().listen_addr.clone();
         // No read timeout: the listener blocks in recv_from until a datagram
         // arrives, and stop() sends one to wake it (see wake_listener).
-        let socket = UdpSocket::bind(&addr).map_err(|e| format!("bind {addr}: {e}"))?;
+        let socket = UdpSocket::bind(&addr).map_err(|e| format!("绑定 {addr} 失败：{e}"))?;
         let bound = socket
             .local_addr()
-            .map_err(|e| format!("local_addr {addr}: {e}"))?;
+            .map_err(|e| format!("获取本地地址 {addr} 失败：{e}"))?;
 
         *self.bound_addr.lock().unwrap() = Some(bound);
         self.running.store(true, Ordering::Relaxed);
@@ -112,7 +112,7 @@ impl DohProxy {
             Err(e) => {
                 self.running.store(false, Ordering::Relaxed);
                 *self.bound_addr.lock().unwrap() = None;
-                Err(format!("spawn listener: {e}"))
+                Err(format!("启动监听线程失败：{e}"))
             }
         }
     }
@@ -162,7 +162,7 @@ impl DohProxy {
 
     pub fn update_config(&self, body: &[u8]) -> Result<(), String> {
         let patch: config::DohConfigPatch =
-            serde_json::from_slice(body).map_err(|e| format!("invalid config JSON: {e}"))?;
+            serde_json::from_slice(body).map_err(|e| format!("无效的配置 JSON：{e}"))?;
         let mut cfg = self.config.lock().unwrap();
         cfg.apply_patch(patch);
         self.cache.lock().unwrap().prune();
@@ -439,7 +439,7 @@ fn process_query(socket: &UdpSocket, proxy: &DohProxy, job: QueryJob) {
                 Some(client) => {
                     client.query(&job.query, &config.dot_endpoint, &config.dot_server_name)
                 }
-                None => Err("DoT TLS client is unavailable".to_string()),
+                None => Err("DoT TLS 客户端不可用".to_string()),
             }
         }
     };
@@ -485,7 +485,7 @@ pub fn probe_upstream(config: &DohConfig) -> Result<u128, String> {
         }
     };
     if !dns_packet::successful_response(&response, ID) {
-        return Err("encrypted resolver returned no usable answer".to_string());
+        return Err("加密解析器未返回可用的应答".to_string());
     }
     Ok(started.elapsed().as_millis())
 }
@@ -582,7 +582,7 @@ mod listener_tests {
         let proxy = proxy_on(&format!("127.0.0.1:{port}"));
 
         proxy.start().expect("first start");
-        assert_eq!(proxy.start().unwrap_err(), "already running");
+        assert_eq!(proxy.start().unwrap_err(), "已在运行");
         let bound = proxy.bound_addr.lock().unwrap().expect("bound_addr set");
         assert_eq!(bound, addr(&format!("127.0.0.1:{port}")));
 

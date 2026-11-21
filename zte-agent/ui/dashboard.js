@@ -26,13 +26,13 @@
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.body ? { 'Content-Type': contentType } : {}) }
     });
     if (response.status === 401) {
-      const error = new Error('Enter your agent password to continue.');
+      const error = new Error('请输入 Agent 密码以继续。');
       error.auth = true;
       error.authEpoch = requestAuthEpoch;
       throw error;
     }
     const result = await response.json();
-    if (!response.ok || !result.ok) { const error = new Error(result.error || 'Reading unavailable'); error.status = response.status; error.details=result; throw error; }
+    if (!response.ok || !result.ok) { const error = new Error(result.error || '读数不可用'); error.status = response.status; error.details=result; throw error; }
     return result.data ?? result;
   }
   function lock() {
@@ -44,11 +44,11 @@
     outageStarted = null; outageCount = 0; lastOutageDuration = 0; lastOutageReason = '';
     $('availability').hidden = true; $('cellular').dataset.stale = 'false';
     text('last-seen', '—'); text('outage-count', '0'); text('outage-duration', '—');
-    setStreamState('locked', 'Locked');
+    setStreamState('locked', '已锁定');
     renderDevice(null); renderWan(null); renderSignal(null); renderModem(null); renderSpeed(null); renderBattery(null); renderWifi(null); renderClients(null);
     $('sms-search').value = ''; renderSMS(null); renderSMSCapacity(null);
-    text('connection-title', 'Console locked');
-    text('updated', 'Console locked'); text('notice', 'Unlock the console to view your network.');
+    text('connection-title', '控制台已锁定');
+    text('updated', '控制台已锁定'); text('notice', '解锁控制台以查看你的网络。');
     $('signout').hidden = true;
     window.dispatchEvent(new Event('dashboard:locked'));
     OpenU60Motion.showDialog(dialog);
@@ -68,11 +68,14 @@
   function renderWan(data) {
     const wan=lastGood.get('wan')?.data,wan6=lastGood.get('wan6')?.data;
     const addresses=OpenU60Addresses.collect(wan,wan6);
-    text('wan-ip',addresses.ipv4.join('\n') || (wan || wan6 ? 'Not reported' : '—'));
-    text('wan-ipv6',addresses.ipv6.join('\n') || (wan || wan6 ? 'Not reported' : '—'));
-    text('wan-ipv6-status',addresses.ipv6.length && (readings.get('wan6')?.ok===false || wan6?.up===false) ? 'Last reported IPv6 address' : '');
+    text('wan-ip',addresses.ipv4.join('\n') || (wan || wan6 ? '未上报' : '—'));
+    text('wan-ipv6',addresses.ipv6.join('\n') || (wan || wan6 ? '未上报' : '—'));
+    text('wan-ipv6-status',addresses.ipv6.length && (readings.get('wan6')?.ok===false || wan6?.up===false) ? '上次上报的 IPv6 地址' : '');
   }
-  function renderModem(data) { text('modem-state', data?.operate_mode); }
+  function renderModem(data) {
+    const mode = data?.operate_mode;
+    text('modem-state', mode ? ({ online: '在线', lpm: '低功耗', offline: '离线', reset: '重置中', resetting: '重置中' }[String(mode).toLowerCase()] || mode) : mode);
+  }
   function element(tag, className, value) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -82,13 +85,13 @@
   function carrierGroup(rat, group, model, historical = false) {
     const list = $(`${rat}-carriers`), existing = new Map([...list.querySelectorAll('.carrier-card')].map(card=>[card.dataset.carrierKey,card]));
     const count = group.carriers.length;
-    let state = !count ? 'Not reported' : `${count} reported · ${count > 1 ? 'carrier aggregation' : 'single carrier'}`;
-    if (group.caInactive && count > 1) state = `${count} reported · CA inactive`;
-    if (rat === 'lte' && model.sa && count) state = `${count} reported · not used in SA`;
-    else if (count && !group.measured) state = `${count} reported · no measured signal`;
-    if (historical && count) state = `Last known · ${count} carriers`;
+    let state = !count ? '未上报' : `已上报 ${count} 个 · ${count > 1 ? '载波聚合' : '单载波'}`;
+    if (group.caInactive && count > 1) state = `已上报 ${count} 个 · 载波聚合未激活`;
+    if (rat === 'lte' && model.sa && count) state = `已上报 ${count} 个 · SA 下未使用`;
+    else if (count && !group.measured) state = `已上报 ${count} 个 · 无实测信号`;
+    if (historical && count) state = `上次已知 · ${count} 个载波`;
     text(`${rat}-status`, state);
-    if (!count) { list.replaceChildren(element('p','carrier-empty',`No ${rat === 'nr' ? 'NR' : 'LTE'} carriers reported by the modem.`)); return; }
+    if (!count) { list.replaceChildren(element('p','carrier-empty',`调制解调器未上报 ${rat === 'nr' ? 'NR' : 'LTE'} 载波。`)); return; }
     const cards = [];
     for (const carrier of group.carriers) {
       const key = JSON.stringify([rat,carrier.pci,carrier.channel,carrier.band,carrier.cellId]);
@@ -98,14 +101,14 @@
         const heading = element('div','carrier-card-heading'), identity = element('div','carrier-identity');
         identity.append(element('strong',''),element('span','carrier-role')); heading.append(identity,element('span','carrier-measurement-state'));
         const facts = element('dl','carrier-facts'), metrics = element('dl','carrier-metrics');
-        for (const label of ['PCI',rat === 'nr' ? 'NR-ARFCN' : 'EARFCN','Bandwidth','Cell ID']) { const fact = element('div'); fact.append(element('dt','',label),element('dd')); facts.append(fact); }
+        for (const label of ['PCI',rat === 'nr' ? 'NR-ARFCN' : 'EARFCN','带宽','小区 ID']) { const fact = element('div'); fact.append(element('dt','',label),element('dd')); facts.append(fact); }
         for (const label of ['RSRP','RSRQ','SINR','RSSI']) { const metric = element('div'); metric.append(element('dt','',label),element('dd')); metrics.append(metric); }
         card.append(heading,facts,metrics);
       }
       card.dataset.role = carrier.role;
-      card.querySelector('.carrier-identity strong').textContent = carrier.band || 'Band unreported';
+      card.querySelector('.carrier-identity strong').textContent = carrier.band || '频段未上报';
       card.querySelector('.carrier-role').textContent = carrier.role;
-      card.querySelector('.carrier-measurement-state').textContent = carrier.rsrp === null ? 'Measurements unavailable' : 'Signal reported';
+      card.querySelector('.carrier-measurement-state').textContent = carrier.rsrp === null ? '测量不可用' : '已上报信号';
       const facts = [carrier.pci,carrier.channel,carrier.bandwidth ? `${carrier.bandwidth} MHz` : '',carrier.cellId];
       [...card.querySelectorAll('.carrier-facts dd')].forEach((node,index)=>{ node.textContent = facts[index] || '—'; });
       [...card.querySelectorAll('.carrier-metrics dd')].forEach((node,index)=>{
@@ -118,19 +121,19 @@
     for (const child of [...list.children]) if (!wanted.has(child)) child.remove();
     cards.forEach((card,index)=>{ if (list.children[index] !== card) list.insertBefore(card,list.children[index] || null); });
   }
-  const signalQuality = rsrp => rsrp == null ? 'Unavailable' : rsrp >= -80 ? 'Excellent' : rsrp >= -95 ? 'Good' : rsrp >= -110 ? 'Fair' : 'Weak';
+  const signalQuality = rsrp => rsrp == null ? '不可用' : rsrp >= -80 ? '极佳' : rsrp >= -95 ? '良好' : rsrp >= -110 ? '一般' : '弱';
   function renderSignal(data) {
     const model = OpenU60Cellular.parse(data || {});
-    text('operator', data?.network_provider ?? 'Operator unavailable'); text('network-type', data ? model.mode : '—');
+    text('operator', data?.network_provider ?? '运营商不可用'); text('network-type', data ? model.mode : '—');
     const reportedBars = number(data?.signalbar), bars = reportedBars === null ? null : Math.max(0,Math.min(5,Math.trunc(reportedBars)));
     const meter = $('operator-signal');
     meter.dataset.available = String(bars !== null);
-    meter.setAttribute('aria-label',bars === null ? 'Cellular signal unavailable' : `Cellular signal ${bars} of 5 bars`);
+    meter.setAttribute('aria-label',bars === null ? '蜂窝信号不可用' : `蜂窝信号 ${bars} 格（共 5 格）`);
     [...meter.children].forEach((bar,index)=>{ bar.dataset.active = String(bars !== null && index < bars); });
-    text('access-mode', data ? model.mode : '—'); text('mode-explanation', model.explanation || 'No serving signal reported by the modem.');
+    text('access-mode', data ? model.mode : '—'); text('mode-explanation', model.explanation || '调制解调器未上报服务信号。');
     text('lte-count', data ? model.lte.carriers.length : '—'); text('nr-count', data ? model.nr.carriers.length : '—');
     const primary = model.primary;
-    text('primary-signal-label', primary ? `MEASURED CARRIER · ${primary.band || 'BAND UNREPORTED'} ${primary.role}` : 'SERVING SIGNAL');
+    text('primary-signal-label', primary ? `实测载波 · ${primary.band || '频段未上报'} ${primary.role}` : '服务信号');
     text('rsrp', primary?.rsrp); text('sinr', primary?.sinr); text('rsrq', primary?.rsrq);
     text('band', primary?.band); text('pci', primary?.pci);
     const rsrp = primary?.rsrp;
@@ -139,7 +142,7 @@
     const inventory = historical ? OpenU60Cellular.parse(lastServing.data) : model;
     $('cellular').dataset.nrActive = String(inventory.nr.inUse);
     carrierGroup('lte', inventory.lte, inventory, Boolean(historical)); carrierGroup('nr', inventory.nr, inventory, Boolean(historical));
-    text('cellular-freshness', data ? 'Live modem readings · Every reported carrier is listed below.' : 'No modem readings available.');
+    text('cellular-freshness', data ? '调制解调器实时读数 · 下方列出每个已上报的载波。' : '无调制解调器读数。');
   }
   const clock = value => new Date(value).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   function refreshOutageClock() {
@@ -151,35 +154,35 @@
     const wan = readings.get('wan'), modem = readings.get('modem'), signal = readings.get('signal');
     const radioMode = String(modem?.ok ? modem.data?.operate_mode ?? '' : '').trim().toUpperCase();
     let reason = '';
-    if (!transportLive) reason = lastReceived ? 'Router unreachable' : 'Waiting for router';
-    else if (radioMode && radioMode !== 'ONLINE') reason = `Radio offline · ${radioMode}`;
-    else if (wan?.ok && wan.data?.up === false) reason = 'Mobile data offline';
-    else if (signal?.ok && OpenU60Cellular.parse(signal.data || {}).mode === 'No service') reason = 'Cellular service unavailable';
-    else if (!wan?.ok) reason = 'Mobile data status unavailable';
+    if (!transportLive) reason = lastReceived ? '路由器不可达' : '等待路由器';
+    else if (radioMode && radioMode !== 'ONLINE') reason = `射频离线 · ${radioMode}`;
+    else if (wan?.ok && wan.data?.up === false) reason = '移动数据离线';
+    else if (signal?.ok && OpenU60Cellular.parse(signal.data || {}).mode === '无服务') reason = '蜂窝服务不可用';
+    else if (!wan?.ok) reason = '移动数据状态不可用';
     const interrupted = reason && (transportLive || lastReceived !== null);
     if (interrupted && outageStarted === null) { outageStarted = Date.now(); outageCount++; }
     if (!interrupted && outageStarted !== null) { lastOutageDuration = Date.now() - outageStarted; outageStarted = null; }
     if (interrupted) lastOutageReason = reason;
-    text('connection-title', reason || 'Cellular connection active');
+    text('connection-title', reason || '蜂窝连接正常');
     document.querySelector('.connection-panel').dataset.state = interrupted ? 'offline' : 'online';
     $('availability').hidden = !outageCount;
     $('history-empty').hidden = Boolean(outageCount);
-    text('availability-title', interrupted ? reason : 'Connection restored');
-    text('offline-cause', !transportLive ? 'Showing last known readings from this tab. Live rates are unavailable.' : interrupted ? 'The router is reachable. Local device statistics continue to update.' : `Recovered from: ${lastOutageReason}. History covers this tab only.`);
+    text('availability-title', interrupted ? reason : '连接已恢复');
+    text('offline-cause', !transportLive ? '正在显示本标签页上次已知的读数。实时速率不可用。' : interrupted ? '路由器可达，本地设备统计仍在更新。' : `已从以下状态恢复：${lastOutageReason}。历史记录仅限本标签页。`);
     text('last-seen', lastReceived ? clock(lastReceived) : '—');
-    text('outage-count', outageCount); text('outage-duration-label', interrupted ? 'Current interruption' : 'Last interruption');
+    text('outage-count', outageCount); text('outage-duration-label', interrupted ? '本次中断' : '上次中断');
     refreshOutageClock();
-    document.querySelectorAll('[data-rate-label]').forEach(label => { label.textContent = interrupted ? 'OFFLINE' : 'LIVE'; });
+    document.querySelectorAll('[data-rate-label]').forEach(label => { label.textContent = interrupted ? '离线' : '实时'; });
     if (interrupted) { text('download', '—'); text('upload', '—'); }
     const oldSignal = lastGood.get('signal');
     const noCurrentSignal = Boolean(signal?.ok && !OpenU60Cellular.parse(signal.data || {}).hasSignal && lastServing);
     const stale = Boolean(oldSignal && (!transportLive || !signal?.ok || noCurrentSignal || (radioMode && radioMode !== 'ONLINE')));
     $('cellular').dataset.stale = String(stale);
     if (stale) {
-      text('cellular-freshness', `${noCurrentSignal ? 'No current serving signal. Last known carriers' : 'Last known modem readings'} · received ${clock(noCurrentSignal ? lastServing.at : oldSignal.at)}. These are not live measurements.`);
-      text('signal-quality', 'Last known');
+      text('cellular-freshness', `${noCurrentSignal ? '当前无服务信号，上次已知载波' : '上次已知的调制解调器读数'} · 最近接收 ${clock(noCurrentSignal ? lastServing.at : oldSignal.at)}。这些不是实时测量值。`);
+      text('signal-quality', '上次已知');
     } else if (signal?.ok) {
-      text('cellular-freshness', `Modem readings received ${clock(oldSignal.at)} · All reported carriers shown.`);
+      text('cellular-freshness', `最近接收调制解调器读数 ${clock(oldSignal.at)} · 已显示全部上报的载波。`);
       text('signal-quality', signalQuality(OpenU60Cellular.parse(signal.data || {}).primary?.rsrp));
     }
   }
@@ -204,7 +207,9 @@
   }
   function renderBattery(data) {
     const raw = number(data?.capacity), capacity = raw !== null && raw >= 0 && raw <= 100 ? raw : null;
-    text('battery', capacity); text('battery-status', data?.status ?? 'Battery data unavailable');
+    const status = data?.status;
+    const statusText = status ? ({ charging: '充电中', discharging: '放电中', full: '已充满', 'not charging': '未充电', unknown: '未知', idle: '空闲' }[String(status).toLowerCase()] || status) : '电池数据不可用';
+    text('battery', capacity); text('battery-status', statusText);
     $('battery-bar').style.width = `${capacity ?? 0}%`;
     const temperature = number(data?.temperature);
     text('temperature', temperature === null ? null : `${(temperature / 10).toFixed(1)} °C`);
@@ -215,10 +220,10 @@
   }
   function renderWifi(data) {
     for (const band of ['2g', '5g']) {
-      text(`ssid-${band}`, data?.[`ssid_${band}`] || `${band === '2g' ? '2.4' : '5'} GHz network`);
+      text(`ssid-${band}`, data?.[`ssid_${band}`] || `${band === '2g' ? '2.4' : '5'} GHz 网络`);
       text(`channel-${band}`, data?.[`channel_${band}`]);
       const disabled = data?.[`radio${band === '2g' ? '2' : '5'}_disabled`];
-      text(`radio-${band}`, !data || disabled === undefined ? '—' : String(data.wifi_onoff) === '0' || String(disabled) === '1' ? 'Off' : 'Enabled');
+      text(`radio-${band}`, !data || disabled === undefined ? '—' : String(data.wifi_onoff) === '0' || String(disabled) === '1' ? '已关闭' : '已启用');
     }
   }
   function renderClients(data) {
@@ -229,17 +234,17 @@
       if (hosts && typeof hosts === 'object') {
         for (const [mac, host] of Object.entries(hosts)) {
           if (!host || typeof host !== 'object') continue;
-          clients.push({ name: host.name || 'Unnamed device', ip: host.ipaddrs?.join(', ') || host.ipv4?.join(', ') || '—', mac, source: 'Host hint' });
+          clients.push({ name: host.name || '未命名设备', ip: host.ipaddrs?.join(', ') || host.ipv4?.join(', ') || '—', mac, source: '主机提示' });
         }
       }
       for (const lease of data.dhcp_leases ?? []) {
         if (!clients.some(client => client.mac.toLowerCase() === String(lease.macaddr).toLowerCase())) {
-          clients.push({ name: lease.hostname || 'Unnamed device', ip: lease.ipaddr || '—', mac: lease.macaddr || '—', source: 'DHCP lease' });
+          clients.push({ name: lease.hostname || '未命名设备', ip: lease.ipaddr || '—', mac: lease.macaddr || '—', source: 'DHCP 租约' });
         }
       }
     }
     if (OpenU60Navigation.current.key !== 'network/clients') text('device-count', data ? clients.length : '—');
-    drawClients(data ? undefined : 'Device data unavailable.');
+    drawClients(data ? undefined : '设备数据不可用。');
   }
   function drawClients(message) {
     const query = $('device-search').value.trim().toLowerCase();
@@ -249,12 +254,12 @@
       const row = body.insertRow(), cell = row.insertCell();
       row.setAttribute('role', 'row'); cell.setAttribute('role', 'cell');
       cell.colSpan = 4; cell.className = 'empty';
-      cell.textContent = message || (query ? 'No devices match your search.' : 'No devices reported by the router.');
+      cell.textContent = message || (query ? '没有设备符合你的搜索条件。' : '路由器未上报任何设备。');
     }
     for (const client of filtered) {
       const row = body.insertRow();
       row.setAttribute('role', 'row');
-      for (const [key, label] of [['name', 'Device'], ['ip', 'IP address'], ['mac', 'MAC address'], ['source', 'Source']]) {
+      for (const [key, label] of [['name', '设备'], ['ip', 'IP 地址'], ['mac', 'MAC 地址'], ['source', '来源']]) {
         const cell = row.insertCell();
         cell.textContent = client[key];
         cell.dataset.label = label;
@@ -272,7 +277,7 @@
   function messageDate(value) {
     const raw = String(value ?? '');
     const parts = raw.split(',').map(Number);
-    if (parts.length < 6 || parts.slice(0,6).some(value => !Number.isFinite(value))) return raw || 'Date unreported';
+    if (parts.length < 6 || parts.slice(0,6).some(value => !Number.isFinite(value))) return raw || '日期未上报';
     const [year,month,day,hour,minute,second] = parts;
     const quarters = Number.isFinite(parts[6]) ? parts[6] : 0;
     if (month < 1 || month > 12 || day < 1 || day > 31 || Math.abs(quarters) > 56) return raw;
@@ -282,26 +287,26 @@
   function renderSMS(data) {
     messages = Array.isArray(data?.messages) ? data.messages.map(message => ({...message,body:decodeMessage(message.content)})) : [];
     text('sms-count', data ? messages.length : '—');
-    text('sms-status', data ? 'Live messages · Router and SIM storage' : 'Messages unavailable. Open SMS while connected to the router.');
+    text('sms-status', data ? '实时消息 · 路由器与 SIM 卡存储' : '消息不可用。请在连接路由器时打开短信页面。');
     drawMessages();
   }
   function drawMessages() {
     const list = $('message-list'); list.replaceChildren();
     const query = $('sms-search').value.trim().toLowerCase();
     const found = messages.filter(message => `${message.number} ${message.body}`.toLowerCase().includes(query));
-    if (!found.length) list.append(element('p','carrier-empty',query ? 'No messages match your search.' : 'No messages to display.'));
-    const tags = {0:'Read',1:'Unread',2:'Sent',3:'Failed',4:'Draft'};
+    if (!found.length) list.append(element('p','carrier-empty',query ? '没有消息符合你的搜索条件。' : '没有可显示的消息。'));
+    const tags = {0:'已读',1:'未读',2:'已发送',3:'发送失败',4:'草稿'};
     for (const message of found) {
       const card = element('article','message-card');
       const heading = element('div','message-card-heading');
-      heading.append(element('strong','',message.number || 'Unknown sender'),element('span','',messageDate(message.date)));
-      card.append(heading,element('p','',message.body),element('small','',`${tags[message.tag] || 'Message'} · ${message.mem_store === 'sim' ? 'SIM' : 'Internal storage'}`));
+      heading.append(element('strong','',message.number || '未知发件人'),element('span','',messageDate(message.date)));
+      card.append(heading,element('p','',message.body),element('small','',`${tags[message.tag] || '消息'} · ${message.mem_store === 'sim' ? 'SIM' : '内部存储'}`));
       if (globalThis.OpenU60Controls) OpenU60Controls.decorateMessage(card,message);
       list.append(card);
     }
   }
   function renderSMSCapacity(data) {
-    const capacity = (used,total) => data ? `${data[used] ?? '—'} / ${data[total] ?? '—'} messages` : '—';
+    const capacity = (used,total) => data ? `${data[used] ?? '—'} / ${data[total] ?? '—'} 条消息` : '—';
     text('sms-internal',capacity('sms_nvused_total','sms_nv_total'));
     text('sms-sim',capacity('sms_simused_total','sms_sim_total'));
     text('sms-unread',data?.sms_dev_unread_num);
@@ -330,7 +335,7 @@
     renderSpeed(null);
     const speed = lastGood.get('speed')?.data;
     text('received', bytes(speedValue(speed,'real_rx_bytes','rx_bytes'))); text('sent', bytes(speedValue(speed,'real_tx_bytes','tx_bytes')));
-    if (streamIncludesSms) text('sms-status','Connection interrupted · Showing the last received messages.');
+    if (streamIncludesSms) text('sms-status','连接中断 · 正在显示最近接收的消息。');
     updateConnection();
   }
   function applyReadings(message, snapshot) {
@@ -355,12 +360,12 @@
     if (currentSignal?.ok && radioMode === 'ONLINE' && OpenU60Cellular.parse(currentSignal.data || {}).hasSignal) {
       lastServing = lastGood.get('signal');
     }
-    if (streamIncludesSms && readings.has('sms') && !readings.get('sms')?.ok) text('sms-status','Messages unavailable · Last received messages are retained where available.');
+    if (streamIncludesSms && readings.has('sms') && !readings.get('sms')?.ok) text('sms-status','消息不可用 · 在可用时保留最近接收的消息。');
     const failures = [...readings.values()].filter(reading => !reading?.ok).length;
-    setStreamState('live', 'Live');
-    text('notice', failures ? `${failures} ${failures === 1 ? 'reading is' : 'readings are'} unavailable. Last known values are retained where available.` : 'Live from your router · Changes arrive automatically');
+    setStreamState('live', '实时');
+    text('notice', failures ? `${failures} 项读数不可用。在可用时保留上次已知的值。` : '数据实时来自路由器 · 变更会自动送达');
     $('notice').classList.toggle('error', failures > 0);
-    text('updated', lastReceived ? `Last received ${clock(lastReceived)}` : 'Waiting for readings');
+    text('updated', lastReceived ? `最近接收 ${clock(lastReceived)}` : '等待读数');
     updateConnection();
     window.dispatchEvent(new CustomEvent('dashboard:readings',{detail:{readings:message.readings || {},snapshot}}));
   }
@@ -394,7 +399,7 @@
       clearTimeout(watchdog);
       watchdog = setTimeout(() => connection.abort(), 30000);
     };
-    setStreamState('connecting', 'Connecting');
+    setStreamState('connecting', '正在连接');
     try {
       resetWatchdog();
       // Fetch keeps bearer tokens out of URLs while supporting an SSE response body.
@@ -405,7 +410,7 @@
       if (session !== epoch) return;
       if (response.status === 401) { lock(); return; }
       if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
-        throw new Error('Live stream unavailable');
+        throw new Error('实时数据流不可用');
       }
       const reader = response.body.getReader();
       const decoder = new TextDecoder(); let buffer = '';
@@ -424,19 +429,19 @@
             handleFrame(frame);
             if (session !== epoch) return;
           }
-          if (buffer.length > 1024 * 1024) throw new Error('Event frame too large');
+          if (buffer.length > 1024 * 1024) throw new Error('事件帧过大');
         }
       } finally {
         await reader.cancel().catch(() => {});
         reader.releaseLock();
       }
-      if (session === epoch) throw new Error('Stream disconnected');
+      if (session === epoch) throw new Error('数据流已断开');
     } catch (error) {
       if (session !== epoch || locked || document.hidden) return;
       markOffline();
-      setStreamState('retrying', 'Reconnecting');
-      text('notice', 'Live connection interrupted. Reconnecting automatically…');
-      $('notice').classList.add('error'); text('updated', lastReceived ? `Last received ${clock(lastReceived)} · offline` : 'Waiting for live readings');
+      setStreamState('retrying', '正在重新连接');
+      text('notice', '实时连接中断，正在自动重新连接…');
+      $('notice').classList.add('error'); text('updated', lastReceived ? `最近接收 ${clock(lastReceived)} · 离线` : '等待实时读数');
       reconnectTimer = setTimeout(connect, retryDelay);
       retryDelay = Math.min(retryDelay * 2, 15000);
     } finally {
@@ -447,11 +452,11 @@
     event.preventDefault(); const button = event.submitter; button.disabled = true; text('login-error', '');
     try {
       const data = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ password: $('password').value }) });
-      if (typeof data.token !== 'string' || !data.token || data.token.length > 2048 || /[\s\x00-\x1f]/.test(data.token)) throw new Error('Invalid session response');
+      if (typeof data.token !== 'string' || !data.token || data.token.length > 2048 || /[\s\x00-\x1f]/.test(data.token)) throw new Error('会话响应无效');
       token = data.token; authEpoch++;
       try { sessionStorage.setItem(sessionKey,token); } catch { /* Keep the session in memory. */ }
       locked = false; $('password').value = ''; await OpenU60Motion.closeDialog(dialog); $('signout').hidden = false; connect();
-    } catch (error) { text('login-error', error.auth ? 'Incorrect password. Please try again.' : 'Could not unlock the router. Check your connection.'); }
+    } catch (error) { text('login-error', error.auth ? '密码不正确，请重试。' : '无法解锁路由器，请检查连接。'); }
     finally { button.disabled = false; }
   });
   dialog.addEventListener('cancel', event => event.preventDefault());
@@ -462,8 +467,8 @@
     if (document.hidden) {
       stopStream();
       if (!locked) {
-        setStreamState('paused', 'Paused');
-        text('notice', 'Updates paused while this tab is in the background.');
+        setStreamState('paused', '已暂停');
+        text('notice', '本标签页在后台时，更新已暂停。');
       }
     } else connect();
   });
@@ -478,7 +483,7 @@
       renderSMS(null); renderSMSCapacity(null);
     }
     if (options.key !== streamKey) {
-      if (includeSms) text('sms-status','Connecting to message storage…');
+      if (includeSms) text('sms-status','正在连接消息存储…');
       connect();
     }
   });

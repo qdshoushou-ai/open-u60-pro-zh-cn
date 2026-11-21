@@ -63,17 +63,17 @@
     const nsa = normalized.includes('NSA') || normalized === 'ENDC';
     const sa = !nsa && (normalized === 'SA' || /(?:NR5G|5G|NR)SA/.test(normalized));
     const lteHint = /LTE|4G/.test(normalized);
-    let mode = 'Not reported', explanation = '';
-    if (sa) { mode = '5G SA'; explanation = 'Standalone NR · LTE is not an anchor in this mode.'; }
+    let mode = '未上报', explanation = '';
+    if (sa) { mode = '5G SA'; explanation = '独立组网 NR · 此模式下 LTE 不作为锚点。'; }
     else if (nr.measured && (nsa || lteHint || lte.measured)) {
-      mode = '5G NSA'; explanation = nsa ? 'NR with an LTE anchor.' : 'NSA inferred from the reported LTE and NR measurements.';
+      mode = '5G NSA'; explanation = nsa ? 'NR 以 LTE 为锚点。' : '根据上报的 LTE 与 NR 测量值推断为 NSA。';
     } else if (lte.measured || lteHint) {
-      mode = !lte.measured ? '4G · no signal' : lte.carriers.length > 1 && !lte.caInactive ? '4G+' : '4G';
-      explanation = !lte.measured ? 'Reported LTE mode; no serving signal is currently measured.' : nsa ? 'The modem reports NSA, but no NR signal is currently measured.' : 'LTE connection.';
+      mode = !lte.measured ? '4G · 无信号' : lte.carriers.length > 1 && !lte.caInactive ? '4G+' : '4G';
+      explanation = !lte.measured ? '上报为 LTE 模式；当前未测量到服务信号。' : nsa ? '调制解调器上报 NSA，但当前未测量到 NR 信号。' : 'LTE 连接。';
     } else if (nr.measured) {
-      mode = '5G · mode unreported'; explanation = 'NR is measured; the modem has not confirmed SA or NSA.';
-    } else if (nsa) { mode = '5G NSA · no signal'; explanation = 'Reported access mode; no serving signal is currently measured.'; }
-    else if (/NO.?SERVICE|OFFLINE|DISCONNECTED|SEARCH/.test(normalized)) { mode = 'No service'; }
+      mode = '5G · 模式未上报'; explanation = '已测量到 NR；调制解调器尚未确认 SA 或 NSA。';
+    } else if (nsa) { mode = '5G NSA · 无信号'; explanation = '上报的接入模式；当前未测量到服务信号。'; }
+    else if (/NO.?SERVICE|OFFLINE|DISCONNECTED|SEARCH/.test(normalized)) { mode = '无服务'; }
     else if (raw) { mode = raw; }
     lte.inUse = !sa && lte.measured;
     nr.inUse = nr.measured;

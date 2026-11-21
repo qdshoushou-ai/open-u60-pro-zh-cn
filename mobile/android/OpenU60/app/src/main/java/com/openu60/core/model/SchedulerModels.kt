@@ -24,22 +24,22 @@ data class SchedulerJob(
         get() = when (scheduleType) {
             "recurring" -> {
                 val time = scheduleTime ?: "??:??"
-                val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                val dayNames = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
                 val dayStr = when {
-                    scheduleDays.size == 7 -> "Every day"
-                    scheduleDays == listOf(0, 1, 2, 3, 4) -> "Mon\u2013Fri"
-                    scheduleDays == listOf(5, 6) -> "Weekends"
+                    scheduleDays.size == 7 -> "每天"
+                    scheduleDays == listOf(0, 1, 2, 3, 4) -> "周一至周五"
+                    scheduleDays == listOf(5, 6) -> "周末"
                     else -> scheduleDays.mapNotNull { dayNames.getOrNull(it) }.joinToString(", ")
                 }
-                if (restoreTime != null) "$dayStr at $time \u2192 $restoreTime"
-                else "$dayStr at $time"
+                if (restoreTime != null) "$dayStr $time → $restoreTime"
+                else "$dayStr $time"
             }
             "once" -> {
                 if (scheduleAt != null) {
                     val date = Date(scheduleAt.toLong() * 1000)
                     val fmt = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
-                    "Once: ${fmt.format(date)}"
-                } else "One-time"
+                    "单次：${fmt.format(date)}"
+                } else "单次"
             }
             else -> scheduleType
         }
@@ -82,11 +82,11 @@ data class SchedulerJob(
 }
 
 enum class ActionTemplate(val label: String, val method: String, val path: String) {
-    AIRPLANE_ON("Airplane Mode ON", "POST", "/api/modem/airplane"),
-    MOBILE_DATA_OFF("Mobile Data OFF", "PUT", "/api/modem/data"),
-    GUEST_WIFI_OFF("Guest WiFi OFF", "PUT", "/api/wifi/guest"),
-    REBOOT("Reboot", "POST", "/api/device/reboot"),
-    POWER_SAVE_ON("Power Save ON", "PUT", "/api/device/power-save");
+    AIRPLANE_ON("开启飞行模式", "POST", "/api/modem/airplane"),
+    MOBILE_DATA_OFF("关闭移动数据", "PUT", "/api/modem/data"),
+    GUEST_WIFI_OFF("关闭访客 Wi-Fi", "PUT", "/api/wifi/guest"),
+    REBOOT("重启", "POST", "/api/device/reboot"),
+    POWER_SAVE_ON("开启节能模式", "PUT", "/api/device/power-save");
 
     val actionBody: Map<String, Any?>?
         get() = when (this) {

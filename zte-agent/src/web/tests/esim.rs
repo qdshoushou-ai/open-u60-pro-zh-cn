@@ -200,7 +200,7 @@ async fn empty_and_failed_lists() {
     let _dev = device::set(&c.app, device::Device { gets: vec![("/api/esim/profiles", Ok(stale))], ..Default::default() });
     let html = get_with(&c, LIST, peer(161, 3), &cookie).await.text();
     assert!(html.contains("Couldn’t refresh profiles") && html.contains("The eSIM is still settling after the switch. Showing the list read at an earlier time."), "{html}");
-    let _dev = device::set(&c.app, device::Device { gets: vec![("/api/esim/profiles", Err("eSIM manager busy; retry shortly".into()))], ..Default::default() });
+    let _dev = device::set(&c.app, device::Device { gets: vec![("/api/esim/profiles", Err("eSIM 管理器繁忙，请稍后重试".into()))], ..Default::default() });
     let html = get_with(&c, LIST, peer(161, 4), &cookie).await.text();
     assert!(html.contains("Couldn't read eSIM profiles: eSIM manager busy; retry shortly") && html.contains("<span class=\"cnt\">Not read yet</span>"), "{html}");
 }
@@ -296,7 +296,7 @@ async fn switch_asks_then_follows_the_switch_once() {
 #[tokio::test]
 async fn switch_refusals_read_as_the_app() {
     let (c, cookie, _) = signed_in(163).await;
-    let busy = (409, json!({"ok": false, "error": "eSIM manager busy; retry shortly"}));
+    let busy = (409, json!({"ok": false, "error": "eSIM 管理器繁忙，请稍后重试"}));
     let _dev = device::set(&c.app, device_with(vec![("/api/esim/enable", busy)], vec![]));
     let list = get_with(&c, LIST, peer(163, 2), &cookie).await.text();
     let dito = key_of(&list, 1);
@@ -308,7 +308,7 @@ async fn switch_refusals_read_as_the_app() {
     let html = get_with(&c, &line, peer(163, 3), &cookie).await.text();
     assert!(html.contains("<b>eSIM in use</b><p>The eSIM is busy; try again in a moment.</p>") && !html.contains("Reload profiles"), "{html}");
     // Airplane mode: the app's words and guidance.
-    let lpm = (409, json!({"ok": false, "error": "the modem is in airplane / low-power mode; turn it back on before switching profiles"}));
+    let lpm = (409, json!({"ok": false, "error": "调制解调器处于飞行模式／低功耗模式，切换配置前请先恢复"}));
     let _dev = device::set(&c.app, device_with(vec![("/api/esim/enable", lpm)], vec![]));
     let q = get_with(&c, &format!("{SWITCH}?p={dito}"), peer(163, 4), &cookie).await.text();
     let body = format!("csrf={}&p={dito}&once={}&confirm=1", page_csrf(&q), once(&q));

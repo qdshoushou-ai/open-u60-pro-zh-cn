@@ -51,8 +51,8 @@
   --signal-neutral: #c4d0db;
   --signal-good: #8aa8cb;
   --signal-strong: #4f78aa;
-  --mono: "SFMono-Regular",Consolas,"Liberation Mono",monospace;
-  --sans: "Avenir Next",Avenir,"Segoe UI",sans-serif;
+  --mono: "SFMono-Regular",Consolas,"Liberation Mono","PingFang SC","Microsoft YaHei","Noto Sans Mono CJK SC",monospace;
+  --sans: "Avenir Next",Avenir,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
 }
 
 :root[data-theme="dark"] {
@@ -118,7 +118,7 @@ body {
   margin:0;
   background:var(--paper);
   color:var(--ink);
-  font:14px/1.5 var(--sans);
+  font:14px/1.6 var(--sans);
   -webkit-font-smoothing:antialiased
 }
 a {
@@ -223,7 +223,7 @@ button {
 }
 .nav-label,.eyebrow {
   font:10px var(--mono);
-  letter-spacing:1.5px;
+  letter-spacing:.12em;
   color:var(--muted)
 }
 .nav-label {

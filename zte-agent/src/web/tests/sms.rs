@@ -175,7 +175,7 @@ async fn messages_follow_the_app() {
 
     // Empty: the app's empty state; capacity unknown: no storage row.
     let mut empty = fake::Device::with(json!([]));
-    empty.capacity = Err("ubus timeout".into());
+    empty.capacity = Err("ubus 超时".into());
     let _dev = fake::set(&c.app, empty.clone());
     let html = get_with(&c, "/ui/sms", peer(60, 6), &cookie).await.text();
     assert!(html.contains("<h2>0 Conversations</h2><ul class=\"list\"></ul></section><div class=\"empty\">"), "{html}");

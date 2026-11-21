@@ -78,7 +78,7 @@ class AgentClient @Inject constructor() {
         val element = Json.parseToJsonElement(data)
         val obj = element.jsonObject
         val ok = obj["ok"]?.jsonPrimitive?.booleanOrNull ?: false
-        if (!ok) throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "Unknown error")
+        if (!ok) throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "未知错误")
         val dataElement = obj["data"]
         if (dataElement is JsonArray) {
             return dataElement.map { it.jsonObject.toMap() }
@@ -180,7 +180,7 @@ class AgentClient @Inject constructor() {
         } catch (e: java.net.ConnectException) {
             throw AgentError.ServerUnreachable()
         } catch (e: Exception) {
-            throw AgentError.NetworkError(e.message ?: "Unknown", e)
+            throw AgentError.NetworkError(e.message ?: "未知", e)
         }
     }
 
@@ -191,14 +191,14 @@ class AgentClient @Inject constructor() {
             val obj = element.jsonObject
             val ok = obj["ok"]?.jsonPrimitive?.booleanOrNull ?: false
             if (!ok) {
-                throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "Unknown error")
+                throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "未知错误")
             }
-            val dataElement = obj["data"] ?: throw AgentError.DecodingError("Response ok but data is null")
+            val dataElement = obj["data"] ?: throw AgentError.DecodingError("响应正常但数据为空")
             return json.decodeFromJsonElement(dataElement)
         } catch (e: AgentError) {
             throw e
         } catch (e: Exception) {
-            throw AgentError.DecodingError(e.message ?: "Unknown decoding error")
+            throw AgentError.DecodingError(e.message ?: "未知解码错误")
         }
     }
 
@@ -206,7 +206,7 @@ class AgentClient @Inject constructor() {
         val element = Json.parseToJsonElement(data)
         val obj = element.jsonObject
         val ok = obj["ok"]?.jsonPrimitive?.booleanOrNull ?: false
-        if (!ok) throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "Unknown error")
+        if (!ok) throw AgentError.ServerError(obj["error"]?.jsonPrimitive?.contentOrNull ?: "未知错误")
         val dataElement = obj["data"]
         if (dataElement is JsonObject && identity.observe(dataElement)) _identityRevision.update { it + 1 }
         return when (dataElement) {

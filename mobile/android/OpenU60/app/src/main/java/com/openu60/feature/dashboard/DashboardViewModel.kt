@@ -133,13 +133,13 @@ class DashboardViewModel @Inject constructor(
                 try {
                     fetchSignal()
                 } catch (_: Exception) {
-                    error.value = "Authentication failed"
+                    error.value = "身份验证失败"
                 }
             } else {
-                error.value = "Session expired. Please log in again."
+                error.value = "会话已过期，请重新登录。"
             }
         } catch (e: Exception) {
-            error.value = e.message ?: "Unknown error"
+            error.value = e.message ?: "未知错误"
         }
         isLoading.value = false
     }

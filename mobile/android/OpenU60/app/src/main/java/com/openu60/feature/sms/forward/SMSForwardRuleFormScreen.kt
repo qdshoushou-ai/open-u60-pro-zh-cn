@@ -95,10 +95,10 @@ fun SMSForwardRuleFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Rule") },
+                title = { Text("新建规则") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
             )
@@ -133,7 +133,7 @@ fun SMSForwardRuleFormScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Rule Name") },
+                label = { Text("规则名称") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
@@ -141,14 +141,14 @@ fun SMSForwardRuleFormScreen(
             // Filter card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Filter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("过滤", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     listOf(
-                        "all" to "All Messages",
-                        "sender" to "By Sender",
-                        "content" to "By Content",
-                        "sender_and_content" to "By Sender & Content",
+                        "all" to "全部消息",
+                        "sender" to "按发送者",
+                        "content" to "按内容",
+                        "sender_and_content" to "按发送者与内容",
                     ).forEach { (value, label) ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -168,7 +168,7 @@ fun SMSForwardRuleFormScreen(
                         OutlinedTextField(
                             value = senderPatterns,
                             onValueChange = { senderPatterns = it },
-                            label = { Text("Sender Patterns (comma-separated)") },
+                            label = { Text("发送者模式（逗号分隔）") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                         )
@@ -179,7 +179,7 @@ fun SMSForwardRuleFormScreen(
                         OutlinedTextField(
                             value = contentKeywords,
                             onValueChange = { contentKeywords = it },
-                            label = { Text("Keywords (comma-separated)") },
+                            label = { Text("关键词（逗号分隔）") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                         )
@@ -190,7 +190,7 @@ fun SMSForwardRuleFormScreen(
             // Destination card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Destination", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("目标", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     ExposedDropdownMenuBox(
@@ -201,7 +201,7 @@ fun SMSForwardRuleFormScreen(
                             value = destLabels[destTypes.indexOf(destType)],
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Type") },
+                            label = { Text("类型") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = destExpanded) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                         )
@@ -246,7 +246,7 @@ fun SMSForwardRuleFormScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("Silent")
+                                Text("静默")
                                 Switch(checked = tgSilent, onCheckedChange = { tgSilent = it })
                             }
                         }
@@ -267,7 +267,7 @@ fun SMSForwardRuleFormScreen(
                                     value = webhookMethod,
                                     onValueChange = {},
                                     readOnly = true,
-                                    label = { Text("Method") },
+                                    label = { Text("方法") },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = webhookMethodExpanded) },
                                     modifier = Modifier.fillMaxWidth().menuAnchor(),
                                 )
@@ -290,7 +290,7 @@ fun SMSForwardRuleFormScreen(
                             OutlinedTextField(
                                 value = webhookHeaders,
                                 onValueChange = { webhookHeaders = it },
-                                label = { Text("Headers (name:value per line)") },
+                                label = { Text("请求头（每行 name:value）") },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
                                 maxLines = 5,
@@ -300,7 +300,7 @@ fun SMSForwardRuleFormScreen(
                             OutlinedTextField(
                                 value = smsNumber,
                                 onValueChange = { smsNumber = it },
-                                label = { Text("Forward Number") },
+                                label = { Text("转发号码") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
@@ -309,7 +309,7 @@ fun SMSForwardRuleFormScreen(
                             OutlinedTextField(
                                 value = ntfyUrl,
                                 onValueChange = { ntfyUrl = it },
-                                label = { Text("Server URL") },
+                                label = { Text("服务器 URL") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
@@ -317,7 +317,7 @@ fun SMSForwardRuleFormScreen(
                             OutlinedTextField(
                                 value = ntfyTopic,
                                 onValueChange = { ntfyTopic = it },
-                                label = { Text("Topic") },
+                                label = { Text("主题") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
@@ -325,7 +325,7 @@ fun SMSForwardRuleFormScreen(
                             OutlinedTextField(
                                 value = ntfyToken,
                                 onValueChange = { ntfyToken = it },
-                                label = { Text("Token (optional)") },
+                                label = { Text("Token（可选）") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                             )
@@ -366,7 +366,7 @@ fun SMSForwardRuleFormScreen(
                     },
                     enabled = buildDestination() != null && !state.isLoading,
                     modifier = Modifier.weight(1f),
-                ) { Text("Test") }
+                ) { Text("测试") }
 
                 Button(
                     onClick = {
@@ -377,7 +377,7 @@ fun SMSForwardRuleFormScreen(
                     },
                     enabled = name.isNotBlank() && buildDestination() != null && !state.isLoading,
                     modifier = Modifier.weight(1f),
-                ) { Text("Save") }
+                ) { Text("保存") }
             }
         }
     }

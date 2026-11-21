@@ -9,21 +9,21 @@ export interface BandInfo {
 }
 
 export const deviceSpecs: DeviceSpec[] = [
-  { label: "Chipset", value: "Qualcomm Snapdragon X75" },
+  { label: "芯片组", value: "Qualcomm Snapdragon X75" },
   { label: "CPU", value: "4x Cortex-A55 @ 2.2 GHz" },
-  { label: "Modem", value: "5G-A Sub-6 + mmWave" },
-  { label: "WiFi", value: "WiFi 7 (802.11be), EHT160" },
-  { label: "Battery", value: "10,000\u00a0mAh" },
-  { label: "Display", value: '3.5" IPS LCD touchscreen' },
-  { label: "RAM", value: "1.6\u00a0GB" },
-  { label: "Storage", value: "8\u00a0GB eMMC" },
-  { label: "OS", value: "OpenWrt 23.05 (ZWRT)" },
+  { label: "调制解调器", value: "5G-A Sub-6 + mmWave" },
+  { label: "Wi-Fi", value: "Wi-Fi 7 (802.11be), EHT160" },
+  { label: "电池", value: "10,000\u00a0mAh" },
+  { label: "显示屏", value: "3.5 英寸 IPS LCD 触控屏" },
+  { label: "运行内存", value: "1.6\u00a0GB" },
+  { label: "存储", value: "8\u00a0GB eMMC" },
+  { label: "操作系统", value: "OpenWrt 23.05 (ZWRT)" },
   { label: "USB", value: "USB-C (PD, OTG)" },
 ];
 
 export const bandInfo: BandInfo[] = [
   {
-    type: "NR (5G)",
+    type: "NR（5G）",
     bands:
       "n1, n2, n3, n5, n7, n8, n18, n20, n26, n28, n29, n38, n40, n41, n48, n66, n71, n75, n77, n78, n79",
   },

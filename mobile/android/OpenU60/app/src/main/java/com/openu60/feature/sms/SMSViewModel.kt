@@ -58,7 +58,7 @@ class SMSViewModel @Inject constructor(
                         _error.value = e2.message
                     }
                 } else {
-                    _error.value = "Session expired"
+                    _error.value = "会话已过期"
                 }
             } catch (e: Exception) {
                 _error.value = e.message
@@ -131,13 +131,13 @@ class SMSViewModel @Inject constructor(
                         onSuccess()
                         refresh()
                     } catch (e2: Exception) {
-                        _error.value = "Failed to send: ${e2.message}"
+                        _error.value = "发送失败：${e2.message}"
                     }
                 } else {
-                    _error.value = "Session expired"
+                    _error.value = "会话已过期"
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to send: ${e.message}"
+                _error.value = "发送失败：${e.message}"
             }
             _isSending.value = false
         }

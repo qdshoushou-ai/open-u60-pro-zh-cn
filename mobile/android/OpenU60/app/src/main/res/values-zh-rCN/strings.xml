@@ -8,7 +8,7 @@
     <string name="nav_settings">设置</string>
     <string name="nav_signal">信号</string>
     <string name="status_connected">已连接</string>
-    <string name="status_connecting">连接中...</string>
+    <string name="status_connecting">连接中…</string>
     <string name="status_error">错误</string>
     <string name="status_offline">离线</string>
     <string name="status_not_connected">未连接</string>

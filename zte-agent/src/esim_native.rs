@@ -108,7 +108,7 @@ pub fn run(args: &[&str], node: u32, slot: u8, limit: Duration) -> Result<Value,
             Ok(Value::Array(list.iter().map(notification_json).collect()))
         }
         ["notification", "process", "-r", seq] => {
-            let seq: u64 = seq.parse().map_err(|_| "notification sequence number must be a number".to_string())?;
+            let seq: u64 = seq.parse().map_err(|_| "通知序列号必须为数字".to_string())?;
             let mut e = session()?;
             let pending = e
                 .retrieve_notification(seq)
@@ -121,7 +121,7 @@ pub fn run(args: &[&str], node: u32, slot: u8, limit: Duration) -> Result<Value,
                 Err(err) => Err(format!("es10b_remove_notification_from_list: {err}")),
             }
         }
-        _ => Err(format!("unsupported eSIM command: {}", args.join(" "))),
+        _ => Err(format!("不支持的 eSIM 命令：{}", args.join(" "))),
     }
 }
 
@@ -270,7 +270,7 @@ fn http_client() -> Result<&'static reqwest::blocking::Client, String> {
     if let Some(c) = CLIENT.get() {
         return Ok(c);
     }
-    let built = build_client().map_err(|e| format!("HTTP client: {e}"))?;
+    let built = build_client().map_err(|e| format!("HTTP 客户端：{e}"))?;
     Ok(CLIENT.get_or_init(|| built))
 }
 
@@ -279,7 +279,7 @@ fn http_client() -> Result<&'static reqwest::blocking::Client, String> {
 pub(crate) fn transport_error(e: &reqwest::Error) -> String {
     let mut parts = Vec::new();
     if e.is_timeout() {
-        parts.push("timed out".to_string());
+        parts.push("超时".to_string());
     }
     let mut source = std::error::Error::source(e);
     while let Some(s) = source {
@@ -321,7 +321,7 @@ impl euicc::es9p::Http for Es9pHttp {
             format!("reading the answer: {cause}")
         })?;
         if out.len() as u64 > HTTP_MAX_BODY {
-            return Err("answer too large".into());
+            return Err("应答过大".into());
         }
         Ok((status, out))
     }
@@ -349,7 +349,7 @@ fn valid_address(address: &str) -> bool {
 /// ES9+ HandleNotification: delivers one receipt to the operator's server (SGP.22 §5.6.4).
 fn handle_notification(address: &str, pending: &[u8], timeout: Duration) -> Result<(), String> {
     if !valid_address(address) {
-        return Err("es9p_handle_notification: invalid server address".into());
+        return Err("es9p_handle_notification：服务器地址无效".into());
     }
     let mut http = Es9pHttp { timeout };
     euicc::es9p::handle_notification(&mut http, address, &euicc::b64::encode(pending))

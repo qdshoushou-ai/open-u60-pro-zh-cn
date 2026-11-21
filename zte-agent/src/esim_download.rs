@@ -56,14 +56,14 @@ pub(crate) struct ActivationCode {
 pub(crate) fn parse_activation_code(code: &str) -> Result<ActivationCode, &'static str> {
     let fields: Vec<&str> = code.trim().split('$').collect();
     if fields.first().map(|f| f.eq_ignore_ascii_case("LPA:1")) != Some(true) {
-        return Err("activation code must start with LPA:1$");
+        return Err("激活码必须以 LPA:1$ 开头");
     }
     if fields.len() < 3 {
-        return Err("activation code has the wrong number of fields");
+        return Err("激活码的字段数量不正确");
     }
     let smdp = fields[1].trim();
     if smdp.is_empty() || smdp.len() > 255 || !smdp.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b':')) {
-        return Err("activation code has an invalid server address");
+        return Err("激活码的服务器地址无效");
     }
     Ok(ActivationCode {
         smdp: smdp.to_string(),
@@ -213,7 +213,7 @@ fn steps<T: Apdu, H: Es9pTransport>(
 ) -> Result<Value, Stop> {
     let es9p_fail = Stop::server;
     if code.confirmation_required && confirmation_code.is_none_or(str::is_empty) {
-        return Err(Stop::new("this activation code needs a confirmation code".into(), None));
+        return Err(Stop::new("此激活码需要确认码".into(), None));
     }
 
     progress("es10b_get_euicc_challenge_and_info", Value::Null);
@@ -250,7 +250,7 @@ fn steps<T: Apdu, H: Es9pTransport>(
     if confirmation_code.is_none_or(str::is_empty) && confirmation_required_by_server(&prepare.b64_smdp_signed2) {
         // Stop before the preview; postponed keeps the order open for a retry with the code.
         return Err(Stop::new(
-            "the operator requires a confirmation code for this profile".into(),
+            "运营商要求为此配置提供确认码".into(),
             Some(CancelSessionReason::Postponed),
         ));
     }
@@ -284,7 +284,7 @@ fn steps<T: Apdu, H: Es9pTransport>(
         return Err(Stop::user(DownloadCtl::Cancel));
     }
     if left(deadline) < INSTALL_MIN {
-        return Err(Stop::new("not enough time left to install".into(), Some(CancelSessionReason::Timeout)));
+        return Err(Stop::new("剩余时间不足以完成安装".into(), Some(CancelSessionReason::Timeout)));
     }
 
     // From here the install runs to the end. The agent refuses Cancel once this step is shown;
@@ -301,7 +301,7 @@ fn steps<T: Apdu, H: Es9pTransport>(
         *session = None;
         let command = euicc::download::bpp_command_id_str(result.bpp_command_id.unwrap_or(0xFF));
         let reason = euicc::download::error_reason_str(result.error_reason.unwrap_or(0xFF));
-        return Err(Stop::new(format!("es10b_load_bound_profile_package: {command}, {reason}"), None));
+        return Err(Stop::new(format!("es10b_load_bound_profile_package：{command}，{reason}"), None));
     }
     Ok(json!({"iccid": result.iccid, "seqNumber": result.seq_number}))
 }
@@ -351,7 +351,7 @@ mod tests {
                     c(0xBF41, vec![c(0xA0, vec![p(0x80, &TID)])]).encode()
                 }
                 0x86 if self.install_transport_error => {
-                    return Err(euicc::Error::Transport("modem did not answer in time".into()))
+                    return Err(euicc::Error::Transport("调制解调器未及时应答".into()))
                 }
                 0x86 => {
                     let fin = if self.install_error {
@@ -523,7 +523,7 @@ mod tests {
     fn a_confirmation_code_required_by_the_server_stops_before_the_preview() {
         let smdp = Smdp { cc_in_signed2: true, ..Smdp::default() };
         let r = run(Card::default(), smdp, true, Some(DownloadCtl::Accept), &[], CODE);
-        assert_eq!(r.result.unwrap_err(), "the operator requires a confirmation code for this profile");
+        assert_eq!(r.result.unwrap_err(), "运营商要求为此配置提供确认码");
         assert!(!r.steps.contains(&"preview".to_string()));
         assert!(r.card.contains(&"cancel 1".to_string()), "postponed keeps the order open");
     }
@@ -562,7 +562,7 @@ mod tests {
             &[],
             CODE,
         );
-        assert!(r.result.unwrap_err().contains("modem did not answer"));
+        assert!(r.result.unwrap_err().contains("调制解调器未及时应答"));
         assert!(r.card.contains(&"cancel 5".to_string()), "loadBppExecutionError");
     }
 
@@ -586,7 +586,7 @@ mod tests {
         assert!(parse_activation_code("LPA:1$evil.example/path$y").is_err());
         assert!(parse_activation_code("LPA:1$a$b$c$d$e$f").is_ok(), "extra parameters are ignored (SGP.22 4.1)");
         let r = run(Card::default(), Smdp::default(), true, None, &[], "LPA:1$smdp.example$M$$1");
-        assert_eq!(r.result.unwrap_err(), "this activation code needs a confirmation code");
+        assert_eq!(r.result.unwrap_err(), "此激活码需要确认码");
         assert!(r.steps.is_empty(), "nothing is sent without the confirmation code");
     }
 }

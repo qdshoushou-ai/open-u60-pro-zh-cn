@@ -90,24 +90,24 @@ impl AppState {
 pub fn login(state: &AppState, body: &[u8], peer: PeerKey) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let password = match parsed["password"].as_str() {
         Some(p) => p,
-        None => return (400, json!({"ok": false, "error": "missing 'password' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 password"})),
     };
     match state.auth.login(password, Kind::Bearer, peer, &[]) {
         Ok(issued) => (200, json!({"ok": true, "data": {"token": issued.token.expose()}})),
         Err(LoginError::NoPassword | LoginError::BadPassword) => {
-            (401, json!({"ok": false, "error": "invalid password"}))
+            (401, json!({"ok": false, "error": "密码无效"}))
         }
         // The listener copies `retry_after` into a Retry-After header.
         Err(LoginError::RateLimited { retry_after }) => (
             429,
-            json!({"ok": false, "error": "too many login attempts",
+            json!({"ok": false, "error": "登录尝试过多",
                    "retry_after": auth::retry_after_secs(retry_after)}),
         ),
-        Err(LoginError::Entropy) => (503, json!({"ok": false, "error": "entropy unavailable"})),
+        Err(LoginError::Entropy) => (503, json!({"ok": false, "error": "熵源不可用"})),
     }
 }
 
@@ -131,7 +131,7 @@ pub fn battery(_state: &AppState) -> (u16, Value) {
         Some(b) => (200, json!({"ok": true, "data": b})),
         None => (
             503,
-            json!({"ok": false, "error": "battery info not available"}),
+            json!({"ok": false, "error": "电池信息不可用"}),
         ),
     }
 }
@@ -148,7 +148,7 @@ pub fn memory(_state: &AppState) -> (u16, Value) {
         Some(m) => (200, json!({"ok": true, "data": m})),
         None => (
             503,
-            json!({"ok": false, "error": "memory info not available"}),
+            json!({"ok": false, "error": "内存信息不可用"}),
         ),
     }
 }
@@ -294,7 +294,7 @@ pub fn modem_online(state: &AppState) -> (u16, Value) {
         .invalidate_with_settle(cache::MODEM_DATA, cache::SETTLE_WINDOW);
     match result {
         Ok(resp) if resp.contains("OK") => (200, json!({"ok": true, "data": {"status": "ok"}})),
-        Ok(resp) => (500, json!({"ok": false, "error": "AT+CFUN=1 failed", "raw": resp})),
+        Ok(resp) => (500, json!({"ok": false, "error": "AT+CFUN=1 失败", "raw": resp})),
         Err(e) => (503, json!({"ok": false, "error": e})),
     }
 }
@@ -309,7 +309,7 @@ pub fn system_top(state: &AppState) -> (u16, Value) {
 pub fn system_kill_bloat(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     let pids: Option<Vec<u32>> = if parsed["all"].as_bool() == Some(true) {
@@ -317,11 +317,11 @@ pub fn system_kill_bloat(_state: &AppState, body: &[u8]) -> (u16, Value) {
     } else if let Some(arr) = parsed["pids"].as_array() {
         let ids: Vec<u32> = arr.iter().filter_map(|v| v.as_u64().map(|n| n as u32)).collect();
         if ids.is_empty() {
-            return (400, json!({"ok": false, "error": "pids array is empty"}));
+            return (400, json!({"ok": false, "error": "pids 数组为空"}));
         }
         Some(ids)
     } else {
-        return (400, json!({"ok": false, "error": "expected 'all' or 'pids'"}));
+        return (400, json!({"ok": false, "error": "应为“all”或“pids”"}));
     };
 
     let result = system::kill_bloat(pids.as_deref());
@@ -448,13 +448,13 @@ mod login_tests {
         let mut st = AppState::new();
         st.auth = Arc::new(AuthState::with_parts(FakeClock::at_secs(1), Box::new(FailRng), AuthConfig::default()));
         st.auth.set_password("x");
-        assert_eq!(login(&st, body, peer(1)), (503, json!({"ok": false, "error": "entropy unavailable"})));
+        assert_eq!(login(&st, body, peer(1)), (503, json!({"ok": false, "error": "熵源不可用"})));
 
         // No password set: the same 401 as a wrong one, and never rate limited.
         let mut st = AppState::new();
         st.auth = Arc::new(AuthState::with_parts(FakeClock::at_secs(1), Box::new(SeqRng::new()), AuthConfig::default()));
         for _ in 0..10 {
-            assert_eq!(login(&st, body, peer(2)), (401, json!({"ok": false, "error": "invalid password"})));
+            assert_eq!(login(&st, body, peer(2)), (401, json!({"ok": false, "error": "密码无效"})));
         }
     }
 }

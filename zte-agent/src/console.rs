@@ -38,7 +38,7 @@ async fn serve(State(ctx): State<Ctx>, req: Request) -> Response {
         ctx.hosts
             .allows_via(host, loopback, secure, &|| ctx.ts.get())
     }) {
-        let mut reply = Response::new(Body::from("Host not allowed"));
+        let mut reply = Response::new(Body::from("不允许的主机"));
         *reply.status_mut() = StatusCode::FORBIDDEN;
         return reply;
     }
@@ -48,7 +48,7 @@ async fn serve(State(ctx): State<Ctx>, req: Request) -> Response {
         && req.method() != axum::http::Method::HEAD
     {
         let mut reply = Response::new(Body::from(
-            "This interface has been retired. Open /console/. Nothing was changed.",
+            "此接口已停用。请访问 /console/。未做任何更改。",
         ));
         *reply.status_mut() = StatusCode::GONE;
         reply
@@ -91,7 +91,7 @@ async fn serve(State(ctx): State<Ctx>, req: Request) -> Response {
     if path == "/" || path == "/ui" || path.starts_with("/ui/") {
         if path.starts_with("/ui/a/") || path.starts_with("/ui/live/") {
             let mut reply = Response::new(Body::from(
-                "This interface has been retired. Open /console/.",
+                "此接口已停用。请访问 /console/。",
             ));
             *reply.status_mut() = StatusCode::GONE;
             reply
@@ -105,7 +105,7 @@ async fn serve(State(ctx): State<Ctx>, req: Request) -> Response {
         return redirect("/console/");
     }
     let Some((mime, body)) = asset(req.uri().path()) else {
-        let mut reply = Response::new(Body::from("Not found"));
+        let mut reply = Response::new(Body::from("未找到"));
         *reply.status_mut() = StatusCode::NOT_FOUND;
         return reply;
     };
@@ -222,7 +222,7 @@ fn certificate_download(ctx: &Ctx, method: &axum::http::Method, path: &str) -> O
         _ => return None,
     };
     if method != axum::http::Method::GET && method != axum::http::Method::HEAD {
-        return Some(plain(405, "Method not allowed"));
+        return Some(plain(405, "方法不允许"));
     }
     let file = if crt {
         ctx.app
@@ -239,7 +239,7 @@ fn certificate_download(ctx: &Ctx, method: &axum::http::Method, path: &str) -> O
         })
     };
     let Some((body, ct, file)) = file else {
-        return Some(plain(404, "Not found"));
+        return Some(plain(404, "未找到"));
     };
     let mut resp = Response::new(Body::from(body));
     let h = resp.headers_mut();

@@ -90,22 +90,22 @@ fn evaluate(
     let wan_ready = interface_ready(wan) || interface_ready(wan6);
 
     let reason = if battery.is_none() || battery_percent.is_some_and(|p| !(0..=100).contains(&p)) {
-        Some("battery state is unavailable".to_string())
+        Some("电池状态不可用".to_string())
     } else if !battery_ready {
         Some(format!(
-            "battery is {}%; connect power or charge to at least {MIN_BATTERY_PERCENT}%",
+            "电量 {}%；请接通电源或充电至至少 {MIN_BATTERY_PERCENT}%",
             battery_percent.unwrap_or_default()
         ))
     } else if netinfo.is_none() {
-        Some("cellular status is unavailable".to_string())
+        Some("蜂窝网络状态不可用".to_string())
     } else if !service_ready {
-        Some("cellular service is not registered yet".to_string())
+        Some("蜂窝网络尚未注册".to_string())
     } else if !signal_ready {
         Some(format!(
-            "cellular signal is too weak; wait for at least one bar or {MIN_SIGNAL_DBM:.0} dBm"
+            "蜂窝信号过弱；请等待至少一格信号或 {MIN_SIGNAL_DBM:.0} dBm"
         ))
     } else if !wan_ready {
-        Some("cellular WAN is not online yet".to_string())
+        Some("蜂窝 WAN 尚未上线".to_string())
     } else {
         None
     };
@@ -188,7 +188,7 @@ mod tests {
 
         assert_eq!(
             result.blocking_reason(),
-            Some("battery is 29%; connect power or charge to at least 30%")
+            Some("电量 29%；请接通电源或充电至至少 30%")
         );
     }
 
@@ -207,7 +207,7 @@ mod tests {
 
         assert_eq!(
             result.blocking_reason(),
-            Some("cellular service is not registered yet")
+            Some("蜂窝网络尚未注册")
         );
     }
 
@@ -219,7 +219,7 @@ mod tests {
 
         assert_eq!(
             result.blocking_reason(),
-            Some("cellular signal is too weak; wait for at least one bar or -125 dBm")
+            Some("蜂窝信号过弱；请等待至少一格信号或 -125 dBm")
         );
     }
 
@@ -248,7 +248,7 @@ mod tests {
 
         assert_eq!(
             result.blocking_reason(),
-            Some("cellular WAN is not online yet")
+            Some("蜂窝 WAN 尚未上线")
         );
     }
 }

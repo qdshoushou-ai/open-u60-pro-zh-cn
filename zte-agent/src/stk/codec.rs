@@ -13,7 +13,7 @@ pub struct Command {
 
 fn take<'a>(data: &mut &'a [u8], n: usize) -> Result<&'a [u8], String> {
     if data.len() < n {
-        return Err("truncated CAT data".into());
+        return Err("CAT 数据被截断".into());
     }
     let (value, rest) = data.split_at(n);
     *data = rest;
@@ -28,19 +28,19 @@ fn length(data: &mut &[u8]) -> Result<usize, String> {
             Ok(u16::from_be_bytes([v[0], v[1]]) as usize)
         }
         n @ 0..=0x7f => Ok(n as usize),
-        _ => Err("unsupported CAT length".into()),
+        _ => Err("不支持的 CAT 长度".into()),
     }
 }
 
 pub fn unhex(text: &str) -> Result<Vec<u8>, String> {
     if !text.is_ascii() || !text.len().is_multiple_of(2) || text.len() > 16384 {
-        return Err("invalid CAT hex".into());
+        return Err("无效的 CAT 十六进制".into());
     }
     text.as_bytes()
         .chunks_exact(2)
         .map(|v| {
-            let a = (v[0] as char).to_digit(16).ok_or("invalid CAT hex")?;
-            let b = (v[1] as char).to_digit(16).ok_or("invalid CAT hex")?;
+            let a = (v[0] as char).to_digit(16).ok_or("无效的 CAT 十六进制")?;
+            let b = (v[1] as char).to_digit(16).ok_or("无效的 CAT 十六进制")?;
             Ok((a * 16 + b) as u8)
         })
         .collect()
@@ -70,29 +70,29 @@ fn gsm(data: &[u8]) -> Result<String, String> {
                 62 => ']',
                 64 => '|',
                 101 => '€',
-                _ => return Err("unknown GSM extension".into()),
+                _ => return Err("未知的 GSM 扩展".into()),
             });
             escape = false;
         } else if b == 27 {
             escape = true;
         } else {
-            out.push(*table.get(b as usize).ok_or("invalid GSM character")?);
+            out.push(*table.get(b as usize).ok_or("无效的 GSM 字符")?);
         }
     }
     if escape {
-        return Err("truncated GSM escape".into());
+        return Err("GSM 转义被截断".into());
     }
     Ok(out)
 }
 
 fn ucs2(data: &[u8]) -> Result<String, String> {
     if !data.len().is_multiple_of(2) {
-        return Err("odd UCS-2 length".into());
+        return Err("UCS-2 长度为奇数".into());
     }
     data.chunks_exact(2)
         .map(|v| {
             char::from_u32(u16::from_be_bytes([v[0], v[1]]) as u32)
-                .ok_or_else(|| "invalid UCS-2".into())
+                .ok_or_else(|| "无效的 UCS-2".into())
         })
         .collect()
 }
@@ -103,7 +103,7 @@ fn alpha(data: &[u8]) -> Result<String, String> {
         Some(0x81 | 0x82) => {
             let header = if data[0] == 0x81 { 3 } else { 4 };
             if data.len() < header {
-                return Err("truncated alpha identifier".into());
+                return Err("字母标识符被截断".into());
             }
             let base = if header == 3 {
                 (data[2] as u16) << 7
@@ -112,7 +112,7 @@ fn alpha(data: &[u8]) -> Result<String, String> {
             };
             let chars = data
                 .get(header..header + data[1] as usize)
-                .ok_or("truncated alpha identifier")?;
+                .ok_or("字母标识符被截断")?;
             let mut out = String::new();
             let mut i = 0;
             while i < chars.len() {
@@ -120,10 +120,10 @@ fn alpha(data: &[u8]) -> Result<String, String> {
                 if b & 0x80 != 0 {
                     out.push(
                         char::from_u32(base as u32 + (b & 0x7f) as u32)
-                            .ok_or("invalid alpha character")?,
+                            .ok_or("无效的字母字符")?,
                     );
                 } else if b == 27 {
-                    out.push_str(&gsm(chars.get(i..i + 2).ok_or("truncated GSM escape")?)?);
+                    out.push_str(&gsm(chars.get(i..i + 2).ok_or("GSM 转义被截断")?)?);
                     i += 1;
                 } else {
                     out.push_str(&gsm(&[b])?);
@@ -153,7 +153,7 @@ fn text_string(data: &[u8]) -> Result<String, String> {
             }
             gsm(&septets)
         }
-        _ => Err("unsupported CAT text encoding".into()),
+        _ => Err("不支持的 CAT 文本编码".into()),
     }
 }
 
@@ -161,11 +161,11 @@ impl Command {
     pub fn parse(raw: &[u8]) -> Result<Self, String> {
         let mut data = raw;
         if take(&mut data, 1)?[0] != 0xd0 {
-            return Err("expected proactive CAT command".into());
+            return Err("应为主动式 CAT 命令".into());
         }
         let n = length(&mut data)?;
         if n != data.len() {
-            return Err("CAT envelope length mismatch".into());
+            return Err("CAT 信封长度不匹配".into());
         }
         let mut result = Self {
             details: [0; 3],
@@ -192,7 +192,7 @@ impl Command {
                 15 if n > 0 => {
                     let id = val[0];
                     if id == 0 || result.items.iter().any(|(v, _)| *v == id) {
-                        return Err("invalid CAT item ID".into());
+                        return Err("无效的 CAT 项目 ID".into());
                     }
                     result.items.push((id, alpha(&val[1..])?));
                 }
@@ -204,17 +204,17 @@ impl Command {
                 // Optional presentation hints. Unsupported required semantics must not be accepted.
                 4 | 16 | 24 | 25 | 30 | 31 | 43 | 80 | 81 => {}
                 _ if tag & 0x80 == 0 => {}
-                _ => return Err(format!("unsupported required CAT tag {tag:02X}")),
+                _ => return Err(format!("不支持的必需 CAT 标签 {tag:02X}")),
             }
         }
         if !details || !devices {
-            return Err("missing CAT command details or devices".into());
+            return Err("缺少 CAT 命令详情或设备".into());
         }
         if result.details[1] == 0x24 && result.items.is_empty() {
-            return Err("empty SELECT ITEM".into());
+            return Err("SELECT ITEM 为空".into());
         }
         if result.details[1] == 0x23 && result.min > result.max {
-            return Err("invalid input limits".into());
+            return Err("无效的输入限制".into());
         }
         Ok(result)
     }
@@ -245,12 +245,12 @@ impl Command {
 
     pub fn select(&self, item: u8) -> Result<(i32, Vec<u8>), String> {
         if !self.items.iter().any(|(id, _)| *id == item) {
-            return Err("item is not in the current menu".into());
+            return Err("项目不在当前菜单中".into());
         }
         match self.details[1] {
             0x25 => Ok((69, vec![0xd3, 7, 0x82, 2, 1, 0x81, 0x90, 1, item])),
             0x24 => Ok((70, self.response(0, &[0x90, 1, item]))),
-            _ => Err("no selectable menu".into()),
+            _ => Err("没有可选择的菜单".into()),
         }
     }
 
@@ -260,15 +260,15 @@ impl Command {
             return Ok(self.response(0, &[]));
         }
         if !matches!(self.details[1], 0x22 | 0x23) {
-            return Err("no input request pending".into());
+            return Err("没有待处理的输入请求".into());
         }
         let bytes = if self.details[1] == 0x22 && q & 4 != 0 {
             vec![
                 4,
-                u8::from(value["yes"].as_bool().ok_or("yes must be a boolean")?),
+                u8::from(value["yes"].as_bool().ok_or("yes 必须为布尔值")?),
             ]
         } else {
-            let text = value["text"].as_str().ok_or("missing text")?;
+            let text = value["text"].as_str().ok_or("缺少文本")?;
             let count = text.chars().count();
             let (min, max) = if self.details[1] == 0x22 {
                 (1, 1)
@@ -276,16 +276,16 @@ impl Command {
                 (self.min as usize, self.max as usize)
             };
             if count < min || count > max {
-                return Err(format!("input must contain {min}–{max} characters"));
+                return Err(format!("输入必须包含 {min}–{max} 个字符"));
             }
             if q & 1 == 0 && !text.chars().all(|c| "0123456789*#+".contains(c)) {
-                return Err("SIM requests digits only".into());
+                return Err("SIM 仅接受数字".into());
             }
             if q & 2 != 0 {
                 let mut bytes = vec![8];
                 for c in text.chars() {
                     let cp =
-                        u16::try_from(c as u32).map_err(|_| "SIM requires UCS-2 characters")?;
+                        u16::try_from(c as u32).map_err(|_| "SIM 要求 UCS-2 字符")?;
                     bytes.extend(cp.to_be_bytes());
                 }
                 bytes
@@ -295,7 +295,7 @@ impl Command {
                     if let Some(i) = GSM.chars().position(|g| g == c && g != '\u{1b}') {
                         septets.push(i as u8);
                     } else {
-                        return Err("character is not supported by the SIM's input alphabet".into());
+                        return Err("SIM 的输入字符集不支持该字符".into());
                     }
                 }
                 if self.details[1] == 0x23 && q & 8 != 0 {
@@ -318,7 +318,7 @@ impl Command {
             }
         };
         if bytes.len() > 255 {
-            return Err("encoded input exceeds CAT limit".into());
+            return Err("编码后的输入超过 CAT 限制".into());
         }
         let mut extra = vec![0x8d];
         if bytes.len() >= 128 {

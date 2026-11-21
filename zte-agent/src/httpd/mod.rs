@@ -790,7 +790,7 @@ mod wire_tests {
         // Content-Length framing: the next reply starts right after.
         c.ping(None).assert_json(200, json!({"ok": true}));
         let r = c.request("GET /nope HTTP/1.1\r\nHost: 127.0.0.1", b"");
-        assert_eq!((r.status, &r.body[..]), (404, &br#"{"error":"not found","ok":false}"#[..]));
+        assert_eq!((r.status, &r.body[..]), (404, r#"{"error":"未找到","ok":false}"#.as_bytes()));
     }
 
     #[test]
@@ -836,12 +836,12 @@ mod wire_tests {
         let mut c = Conn::open(addr);
         let head = format!("POST /api/scheduler/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {tok}");
         let r = c.request(&head, &vec![b'x'; API_BODY_MAX + 1]);
-        r.assert_json(413, err("body too large"));
+        r.assert_json(413, err("请求体过大"));
         assert!(!r.closes());
         c.ping(Some(&tok)).assert_json(200, json!({"ok": true}));
         // A small body behind an early 401 is drained too.
         let r = c.request("POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1", &[b'x'; 1000]);
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         assert!(!r.closes());
         c.ping(Some(&tok)).assert_json(200, json!({"ok": true}));
     }
@@ -853,7 +853,7 @@ mod wire_tests {
         // The client has only sent the head so far (a slow 5 MB upload).
         let head = "POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 5000000";
         let r = c.raw(head, b"").unwrap();
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         assert!(r.closes());
         assert!(c.closed());
         assert_alive(addr, Some(&token(&ctx)));
@@ -869,10 +869,10 @@ mod wire_tests {
         let addr = start(Ctx::new(Arc::new(state), 2), MAX_CONNS, IDLE_TIMEOUT);
         let mut c = Conn::open(addr);
         for _ in 0..5 {
-            c.login(br#"{"password":"wrong"}"#).assert_json(401, err("invalid password"));
+            c.login(br#"{"password":"wrong"}"#).assert_json(401, err("密码无效"));
         }
         let r = c.login(br#"{"password":"wrong"}"#);
-        r.assert_json(429, json!({"ok": false, "error": "too many login attempts", "retry_after": 1}));
+        r.assert_json(429, json!({"ok": false, "error": "登录尝试过多", "retry_after": 1}));
         assert_eq!(r.header("retry-after"), Some("1"));
         // Blocked even with the right password, until the block ends.
         assert_eq!(c.login(format!(r#"{{"password":"{PW}"}}"#).as_bytes()).status, 429);
@@ -1012,7 +1012,7 @@ mod wire_tests {
             let mut c = Conn::open(addr);
             let t = Instant::now();
             let r = c.raw(&format!("{line} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 100"), b"").unwrap();
-            r.assert_json(400, err("incomplete body"));
+            r.assert_json(400, err("请求体不完整"));
             assert!(r.closes());
             assert!(t.elapsed() >= ctx.body_wait);
             assert!(c.closed());
@@ -1052,7 +1052,7 @@ mod wire_tests {
             assert!(first.starts_with(b"HTTP/1.1 200 "));
             streams.push(c);
         }
-        Conn::open(addr).request(small, b"").assert_json(503, err("agent busy, retry"));
+        Conn::open(addr).request(small, b"").assert_json(503, err("Agent 繁忙，请重试"));
         drop(streams);
         eventually("download slots not freed", || ctx.lan.available_permits() == LAN_STREAMS);
         let r = Conn::open(addr).request(small, b"");
@@ -1080,7 +1080,7 @@ mod wire_tests {
         c.stream.write_all(&vec![b'x'; n]).unwrap();
         c.stream.write_all(b"\r\n0\r\n\r\n").unwrap();
         let r = c.reply(false).unwrap();
-        r.assert_json(413, err("body too large"));
+        r.assert_json(413, err("请求体过大"));
         assert!(!r.closes());
         c.ping(Some(&tok)).assert_json(200, json!({"ok": true}));
     }
@@ -1095,12 +1095,12 @@ mod wire_tests {
         let auth = format!("Authorization: Bearer {tok}");
         let cases: [(String, &[u8], u16, &str); 4] = [
             // Auth fails before the body.
-            (format!("POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 401, "unauthorized"),
+            (format!("POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 401, "未授权"),
             // Over a route's body cap, and over the login cap.
-            (format!("POST /api/scheduler/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n{auth}\r\nContent-Length: {HUGE}"), b"", 413, "body too large"),
-            (format!("POST /api/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 413, "body too large"),
+            (format!("POST /api/scheduler/jobs HTTP/1.1\r\nHost: 127.0.0.1\r\n{auth}\r\nContent-Length: {HUGE}"), b"", 413, "请求体过大"),
+            (format!("POST /api/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 413, "请求体过大"),
             // A LAN route behind an auth failure.
-            (format!("POST /api/lan/upload HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 401, "unauthorized"),
+            (format!("POST /api/lan/upload HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: {HUGE}"), b"", 401, "未授权"),
         ];
         for (i, (head, body, status, error)) in cases.iter().enumerate() {
             let mut c = Conn::open(addr);
@@ -1134,7 +1134,7 @@ mod wire_tests {
         for line in ["POST /api/lan/upload", "GET /api/lan/download?size=1000"] {
             let mut c = Conn::open(addr);
             let r = c.raw(&format!("{line} HTTP/1.1\r\nHost: 127.0.0.1\r\n{auth}\r\nContent-Length: {HUGE}"), b"").unwrap();
-            r.assert_json(503, err("agent busy, retry"));
+            r.assert_json(503, err("Agent 繁忙，请重试"));
             assert!(r.closes());
             assert_alive(addr, Some(&tok));
         }
@@ -1145,10 +1145,10 @@ mod wire_tests {
     fn huge_declared_length_without_password() {
         let (addr, _) = serve(None);
         let cases = [
-            ("POST /api/device/reboot HTTP/1.1", 400, "missing host"),
-            ("POST /api/device/reboot HTTP/1.1\r\nHost: evil.example", 403, "host not allowed"),
-            ("POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nOrigin: http://evil.example", 403, "cross-origin request refused"),
-            ("PUT /api/live-activity HTTP/1.1\r\nHost: 127.0.0.1", 403, "agent password required"),
+            ("POST /api/device/reboot HTTP/1.1", 400, "缺少 Host 头"),
+            ("POST /api/device/reboot HTTP/1.1\r\nHost: evil.example", 403, "不允许的主机"),
+            ("POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nOrigin: http://evil.example", 403, "跨源请求被拒绝"),
+            ("PUT /api/live-activity HTTP/1.1\r\nHost: 127.0.0.1", 403, "需要 Agent 密码"),
         ];
         for (head, status, error) in cases {
             let mut c = Conn::open(addr);
@@ -1166,7 +1166,7 @@ mod wire_tests {
         let head = "POST /api/device/reboot HTTP/1.1\r\nHost: 127.0.0.1\r\nExpect: 100-continue\r\nContent-Length: 10";
         let r = c.raw(head, b"").unwrap();
         // The final reply comes first, never a 100 Continue.
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         assert!(r.closes());
     }
 
@@ -1180,10 +1180,10 @@ mod wire_tests {
         body.resize(LOGIN_BODY_MAX, b' ');
         assert_eq!(c.login(&body).status, 200);
         body.push(b' ');
-        c.login(&body).assert_json(413, err("body too large"));
+        c.login(&body).assert_json(413, err("请求体过大"));
         // The connection is still usable.
-        c.login(b"not json").assert_json(400, err("invalid JSON"));
-        c.login(b"{}").assert_json(400, err("missing 'password' field"));
+        c.login(b"not json").assert_json(400, err("无效的 JSON"));
+        c.login(b"{}").assert_json(400, err("缺少字段 password"));
     }
 
     #[test]
@@ -1194,12 +1194,12 @@ mod wire_tests {
         let r = c.request("GET /api/lan/ping?x=1 HTTP/1.1\r\nhost: localhost:9090", b"");
         r.assert_json(200, json!({"ok": true}));
         let r = c.request("GET /api/lan/ping HTTP/1.1\r\nHost: evil.example:9090", b"");
-        r.assert_json(403, err("host not allowed"));
+        r.assert_json(403, err("不允许的主机"));
         let r = c.request("POST /api/x HTTP/1.1\r\nHost: 127.0.0.1\r\nOrigin: http://evil.example", b"{}");
-        r.assert_json(403, err("cross-origin request refused"));
+        r.assert_json(403, err("跨源请求被拒绝"));
         // HTTP/1.1 requires Host, but hyper passes a request without one on.
         let r = c.request("GET /api/lan/ping HTTP/1.1", b"");
-        r.assert_json(400, err("missing host"));
+        r.assert_json(400, err("缺少 Host 头"));
     }
 
     #[test]
@@ -1208,22 +1208,22 @@ mod wire_tests {
         let mut c = Conn::open(addr);
         let r = c.login(format!(r#"{{"password":"{PW}"}}"#).as_bytes());
         let token = r.json()["data"]["token"].as_str().unwrap().to_owned();
-        let not_found = err("not found");
+        let not_found = err("未找到");
         // Header names are case-insensitive; the `Bearer ` prefix is not.
         let r = c.request(&format!("GET /api/nowhere HTTP/1.1\r\nHost: 127.0.0.1\r\nauthorization: Bearer {token}"), b"");
         r.assert_json(404, not_found.clone());
         let r = c.request(&format!("GET /api/nowhere HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: bearer {token}"), b"");
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         let r = c.request("GET /api/nowhere HTTP/1.1\r\nHost: 127.0.0.1", b"");
-        r.assert_json(401, err("unauthorized"));
+        r.assert_json(401, err("未授权"));
         let auth = format!("POST /api/nowhere HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {token}");
         c.request(&auth, &vec![b'x'; API_BODY_MAX]).assert_json(404, not_found.clone());
-        c.request(&auth, &vec![b'x'; API_BODY_MAX + 1]).assert_json(413, err("body too large"));
+        c.request(&auth, &vec![b'x'; API_BODY_MAX + 1]).assert_json(413, err("请求体过大"));
         // Live Activity: 4096 bytes reach route() (no handler on this path), 4097 do not.
         let live = format!("PUT /api/live-activity/nowhere HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {token}");
         c.request(&live, &vec![b'x'; LIVE_ACTIVITY_BODY_MAX]).assert_json(404, not_found);
         let live = format!("PUT /api/live-activity HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {token}");
-        c.request(&live, &vec![b'x'; LIVE_ACTIVITY_BODY_MAX + 1]).assert_json(413, err("body too large"));
+        c.request(&live, &vec![b'x'; LIVE_ACTIVITY_BODY_MAX + 1]).assert_json(413, err("请求体过大"));
     }
 
     /// Reads until `needle` has arrived (or the 10 s read timeout fails).
@@ -1337,6 +1337,6 @@ mod wire_tests {
         c.stream.write_all(head.as_bytes()).unwrap();
         c.stream.write_all(&[b' '; 1500]).unwrap();
         c.stream.shutdown(Shutdown::Write).unwrap();
-        c.reply(false).unwrap().assert_json(400, err("incomplete body"));
+        c.reply(false).unwrap().assert_json(400, err("请求体不完整"));
     }
 }

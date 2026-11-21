@@ -632,7 +632,7 @@ pub fn response(app: Arc<AppState>, url: String, token: String) -> axum::respons
     let Some(subscription) = app.dashboard.subscribe(interests) else {
         return crate::httpd::api::json_reply(
             503,
-            &json!({"ok":false,"error":"too many live dashboards"}),
+            &json!({"ok":false,"error":"实时仪表盘过多"}),
         );
     };
     struct Viewer {

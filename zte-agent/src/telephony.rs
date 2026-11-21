@@ -220,16 +220,16 @@ fn note_ussd_prompt(state: &AppState, parsed: Option<&(i64, String, u32)>) {
 pub fn call_dial(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let number = match parsed["number"].as_str() {
         Some(n) if !n.is_empty() => n,
-        _ => return (400, json!({"ok": false, "error": "missing number"})),
+        _ => return (400, json!({"ok": false, "error": "缺少号码"})),
     };
     // Sanitize: keep digits, +, *, #
     let clean: String = number.chars().filter(|c| c.is_ascii_digit() || "+*#".contains(*c)).collect();
     match at_cmd::send(&state.at_port, &format!("ATD{clean};"), 5) {
-        Ok(resp) if resp.contains("ERROR") => (500, json!({"ok": false, "error": "dial failed"})),
+        Ok(resp) if resp.contains("ERROR") => (500, json!({"ok": false, "error": "拨打失败"})),
         Ok(_) => {
             state.call_active.store(true, Ordering::Relaxed);
             (200, json!({"ok": true, "data": {"status": "ok"}}))
@@ -284,11 +284,11 @@ pub fn call_status(state: &AppState) -> (u16, Value) {
 pub fn call_dtmf(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let digits = match parsed["digits"].as_str() {
         Some(d) if !d.is_empty() => d,
-        _ => return (400, json!({"ok": false, "error": "missing digits"})),
+        _ => return (400, json!({"ok": false, "error": "缺少数字"})),
     };
     let cmds: Vec<String> = digits
         .chars()
@@ -296,7 +296,7 @@ pub fn call_dtmf(state: &AppState, body: &[u8]) -> (u16, Value) {
         .map(|d| format!("+VTS={d}"))
         .collect();
     if cmds.is_empty() {
-        return (400, json!({"ok": false, "error": "no valid digits"}));
+        return (400, json!({"ok": false, "error": "没有有效数字"}));
     }
     let at_cmd_str = format!("AT{}", cmds.join(";"));
     match at_cmd::send(&state.at_port, &at_cmd_str, 2) {
@@ -309,7 +309,7 @@ pub fn call_dtmf(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn call_mute(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let enabled = parsed["enabled"].as_bool().unwrap_or(false);
     let val = if enabled { "1" } else { "0" };
@@ -323,18 +323,18 @@ pub fn call_mute(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn ussd_send(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let code = match parsed["code"].as_str() {
         Some(c) if !c.is_empty() => c,
-        _ => return (400, json!({"ok": false, "error": "missing code"})),
+        _ => return (400, json!({"ok": false, "error": "缺少代码"})),
     };
     let clean: String = code.chars().filter(|c| c.is_ascii_digit() || "*#+".contains(*c)).collect();
     let at = format!("AT+CUSD=1,\"{clean}\",15");
     match at_cmd::send(&state.at_port, &at, 8) {
         Ok(resp) => {
             if resp.contains("ERROR") {
-                return (500, json!({"ok": false, "error": "USSD failed"}));
+                return (500, json!({"ok": false, "error": "USSD 失败"}));
             }
             let parsed = parse_cusd(&resp);
             note_ussd_prompt(state, parsed.as_ref());
@@ -360,11 +360,11 @@ pub fn ussd_send(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn ussd_respond(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let reply = match parsed["reply"].as_str() {
         Some(r) if !r.is_empty() => r,
-        _ => return (400, json!({"ok": false, "error": "missing reply"})),
+        _ => return (400, json!({"ok": false, "error": "缺少回复"})),
     };
     let clean: String = reply.chars().filter(|c| c.is_ascii_digit() || "*#+".contains(*c)).collect();
     let at = format!("AT+CUSD=1,\"{clean}\",15");

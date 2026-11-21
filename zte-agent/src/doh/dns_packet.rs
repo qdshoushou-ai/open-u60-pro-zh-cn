@@ -17,7 +17,7 @@ pub fn is_valid_query(buf: &[u8]) -> bool {
 pub fn build_query(id: u16, name: &str, qtype: u16) -> Result<Vec<u8>, String> {
     let name = name.trim_end_matches('.');
     if name.is_empty() || name.len() > 253 {
-        return Err("invalid DNS test name".to_string());
+        return Err("无效的 DNS 测试名称".to_string());
     }
     let mut query = Vec::with_capacity(12 + name.len() + 6);
     query.extend_from_slice(&id.to_be_bytes());
@@ -26,7 +26,7 @@ pub fn build_query(id: u16, name: &str, qtype: u16) -> Result<Vec<u8>, String> {
     query.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
     for label in name.split('.') {
         if label.is_empty() || label.len() > 63 || !label.is_ascii() {
-            return Err("invalid DNS test name".to_string());
+            return Err("无效的 DNS 测试名称".to_string());
         }
         query.push(label.len() as u8);
         query.extend_from_slice(label.as_bytes());

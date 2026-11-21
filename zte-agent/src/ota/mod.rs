@@ -161,7 +161,7 @@ impl OtaManager {
                     if !manager.paths.pending.exists() {
                         if let Err(error) = ensure_supervisor(&manager.paths) {
                             manager.paths.append_log(&format!(
-                                "could not repair update supervisor: {error}"
+                                "无法修复更新监督程序：{error}"
                             ));
                         }
                         manager.change(|state| {
@@ -240,7 +240,7 @@ impl OtaManager {
 
     pub fn update_settings(&self, body: &[u8]) -> Result<(), String> {
         if self.operation.swap(true, Ordering::AcqRel) {
-            return Err("another update operation is already running".into());
+            return Err("另一个更新操作已在运行".into());
         }
         let _guard = Operation(&self.operation);
         #[derive(Deserialize)]
@@ -251,7 +251,7 @@ impl OtaManager {
             automatic_downloads: bool,
         }
         let input: Input =
-            serde_json::from_slice(body).map_err(|_| "invalid settings".to_string())?;
+            serde_json::from_slice(body).map_err(|_| "无效的设置".to_string())?;
         let next = Settings {
             channel: input.channel,
             automatic_checks: input.automatic_checks,
@@ -312,7 +312,7 @@ impl OtaManager {
 
     fn check_inner(&self) -> Result<Option<ReleaseManifest>, String> {
         if !self.verifier.configured() {
-            return Err("this build has no OTA release signing key".into());
+            return Err("此构建没有 OTA 发布签名密钥".into());
         }
         let channel = self.settings().channel;
         let stable = self.fetch_manifest(stable_url())?;
@@ -322,7 +322,7 @@ impl OtaManager {
             None
         };
         let current = Version::parse(crate::build_info::VERSION)
-            .map_err(|_| "current build has an invalid version".to_string())?;
+            .map_err(|_| "当前构建的版本无效".to_string())?;
         let blocked: Vec<String> = storage::read_json(&self.paths.blocked).unwrap_or_default();
         select_candidate(channel, &current, stable, beta, &blocked)
     }
@@ -332,18 +332,18 @@ impl OtaManager {
         let response = client(HTTP_TIMEOUT)?
             .get(url)
             .send()
-            .map_err(|e| format!("release channel request failed: {e}"))?;
+            .map_err(|e| format!("发布通道请求失败：{e}"))?;
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Ok(None);
         }
         let response = response
             .error_for_status()
-            .map_err(|e| format!("release channel request failed: {e}"))?;
+            .map_err(|e| format!("发布通道请求失败：{e}"))?;
         if response
             .content_length()
             .is_some_and(|size| size > MAX_ENVELOPE_BYTES as u64)
         {
-            return Err("signed release envelope is too large".into());
+            return Err("已签名的发布信封过大".into());
         }
         let mut bytes = Vec::with_capacity(
             response
@@ -354,9 +354,9 @@ impl OtaManager {
         response
             .take(MAX_ENVELOPE_BYTES as u64 + 1)
             .read_to_end(&mut bytes)
-            .map_err(|e| format!("release channel read failed: {e}"))?;
+            .map_err(|e| format!("读取发布通道失败：{e}"))?;
         if bytes.len() > MAX_ENVELOPE_BYTES {
-            return Err("signed release envelope is too large".into());
+            return Err("已签名的发布信封过大".into());
         }
         self.verifier
             .verify(&bytes)
@@ -381,12 +381,12 @@ impl OtaManager {
             .persistent
             .available
             .clone()
-            .ok_or_else(|| "check for an update first".to_string())?;
+            .ok_or_else(|| "请先检查更新".to_string())?;
         manifest.validate().map_err(|e| e.to_string())?;
         let slot = self.paths.active_slot().unwrap_or(Slot::A).other();
         let available = storage::available_bytes(&self.paths.root).map_err(|e| e.to_string())?;
         if available < manifest.size.saturating_add(REQUIRED_HEADROOM) {
-            return Err("not enough free storage for a safe update".into());
+            return Err("可用存储空间不足以安全更新".into());
         }
         let destination = self.paths.slot_download(slot);
         let metadata_destination = self.paths.slot_meta_download(slot);
@@ -402,12 +402,12 @@ impl OtaManager {
             .get(&manifest.binary_url)
             .send()
             .and_then(reqwest::blocking::Response::error_for_status)
-            .map_err(|e| format!("binary download failed: {e}"))?;
+            .map_err(|e| format!("二进制下载失败：{e}"))?;
         if response
             .content_length()
             .is_some_and(|size| size != manifest.size)
         {
-            return Err("download size does not match the signed manifest".into());
+            return Err("下载大小与已签名清单不匹配".into());
         }
         self.change(|state| {
             state.bytes_received = 0;
@@ -433,7 +433,7 @@ impl OtaManager {
         storage::sync_parent(&self.paths.slot_meta(slot)).map_err(|e| e.to_string())?;
         self.paths
             .clear_slot_bootstrap_digest(slot)
-            .map_err(|e| format!("cannot retire bootstrap digest: {e}"))?;
+            .map_err(|e| format!("无法移除引导摘要：{e}"))?;
         self.change(|state| {
             state.persistent.staged = Some(manifest);
             state.persistent.staged_slot = Some(slot.as_str().into());
@@ -454,12 +454,12 @@ impl OtaManager {
 
     fn install_inner(&self) -> Result<(), String> {
         if self.paths.pending.exists() {
-            return Err("an agent health trial is already in progress".into());
+            return Err("Agent 健康试用已在进行中".into());
         }
         ensure_supervisor(&self.paths)
-            .map_err(|error| format!("update supervisor is not repairable: {error}"))?;
+            .map_err(|error| format!("更新监督程序无法修复：{error}"))?;
         if !self.paths.bootstrap_ready() {
-            return Err("OTA bootstrap supervisor is not installed yet".into());
+            return Err("OTA 引导监督程序尚未安装".into());
         }
         let (manifest, slot) = {
             let state = self.state.lock().unwrap_or_else(|p| p.into_inner());
@@ -467,21 +467,21 @@ impl OtaManager {
                 .persistent
                 .staged
                 .clone()
-                .ok_or_else(|| "download an update first".to_string())?;
+                .ok_or_else(|| "请先下载更新".to_string())?;
             let slot = state
                 .persistent
                 .staged_slot
                 .as_deref()
                 .and_then(Slot::parse)
-                .ok_or_else(|| "staged update slot is invalid".to_string())?;
+                .ok_or_else(|| "暂存更新槽位无效".to_string())?;
             (manifest, slot)
         };
         let previous = self
             .paths
             .active_slot()
-            .ok_or_else(|| "active OTA slot is missing".to_string())?;
+            .ok_or_else(|| "活动 OTA 槽位缺失".to_string())?;
         if slot == previous {
-            return Err("staged update must be in the inactive slot".into());
+            return Err("暂存更新必须位于非活动槽位".into());
         }
         verify_staged_slot(&self.paths, slot, &manifest)?;
         verify_active_slot(&self.paths, previous)?;
@@ -517,14 +517,14 @@ impl OtaManager {
 
     fn rollback_inner(&self) -> Result<(), String> {
         if self.paths.pending.exists() {
-            return Err("an agent health trial is already in progress".into());
+            return Err("Agent 健康试用已在进行中".into());
         }
         ensure_supervisor(&self.paths)
-            .map_err(|error| format!("update supervisor is not repairable: {error}"))?;
+            .map_err(|error| format!("更新监督程序无法修复：{error}"))?;
         let active = self
             .paths
             .active_slot()
-            .ok_or_else(|| "active OTA slot is missing".to_string())?;
+            .ok_or_else(|| "活动 OTA 槽位缺失".to_string())?;
         verify_active_slot(&self.paths, active)?;
         let previous = active.other();
         if self
@@ -537,7 +537,7 @@ impl OtaManager {
             .and_then(Slot::parse)
             == Some(previous)
         {
-            return Err("the inactive slot contains a staged update, not a rollback build".into());
+            return Err("非活动槽位中包含的是暂存更新，而不是回滚版本".into());
         }
         let version = verify_rollback_slot(&self.paths, previous)?;
         let current = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -558,7 +558,7 @@ impl OtaManager {
 
     fn begin(&self, phase: Phase) -> Result<Operation<'_>, String> {
         if self.operation.swap(true, Ordering::AcqRel) {
-            return Err("another update operation is already running".into());
+            return Err("另一个更新操作已在运行".into());
         }
         self.change(|state| {
             state.persistent.phase = phase;
@@ -645,33 +645,33 @@ fn stream_verified_binary(
     let mut buffer = [0u8; 64 * 1024];
     loop {
         if started.elapsed() >= total_timeout {
-            return Err("binary download exceeded the total time limit".into());
+            return Err("二进制下载超过总时间限制".into());
         }
         let count = reader.read(&mut buffer).map_err(|error| {
             if error.kind() == std::io::ErrorKind::TimedOut {
-                "binary download stalled".to_string()
+                "二进制下载停滞".to_string()
             } else {
-                format!("binary download read failed: {error}")
+                format!("读取二进制下载失败：{error}")
             }
         })?;
         if started.elapsed() >= total_timeout {
-            return Err("binary download exceeded the total time limit".into());
+            return Err("二进制下载超过总时间限制".into());
         }
         if count == 0 {
             break;
         }
         received = received.saturating_add(count as u64);
         if received > expected_size || received > MAX_BINARY_BYTES {
-            return Err("download exceeded the signed size".into());
+            return Err("下载超过已签名大小".into());
         }
         writer
             .write_all(&buffer[..count])
-            .map_err(|error| format!("cannot write update download: {error}"))?;
+            .map_err(|error| format!("无法写入更新下载文件：{error}"))?;
         digest.update(&buffer[..count]);
         progress(received);
     }
     if received != expected_size || expected_sha256 != manifest::hex(&digest.finalize()) {
-        return Err("download failed signed size or SHA-256 verification".into());
+        return Err("下载未通过已签名大小或 SHA-256 校验".into());
     }
     Ok(())
 }
@@ -682,25 +682,25 @@ fn verify_file_integrity(
     expected_sha256: &str,
 ) -> Result<(), String> {
     let metadata =
-        fs::metadata(path).map_err(|error| format!("update binary is missing: {error}"))?;
+        fs::metadata(path).map_err(|error| format!("更新二进制缺失：{error}"))?;
     if !metadata.is_file() || metadata.len() != expected_size {
-        return Err("update binary size no longer matches the signed manifest".into());
+        return Err("更新二进制大小不再与已签名清单匹配".into());
     }
     let mut file =
-        fs::File::open(path).map_err(|error| format!("cannot read update binary: {error}"))?;
+        fs::File::open(path).map_err(|error| format!("无法读取更新二进制：{error}"))?;
     let mut digest = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
     loop {
         let count = file
             .read(&mut buffer)
-            .map_err(|error| format!("cannot read update binary: {error}"))?;
+            .map_err(|error| format!("无法读取更新二进制：{error}"))?;
         if count == 0 {
             break;
         }
         digest.update(&buffer[..count]);
     }
     if expected_sha256 != manifest::hex(&digest.finalize()) {
-        return Err("update binary SHA-256 no longer matches the signed manifest".into());
+        return Err("更新二进制 SHA-256 不再与已签名清单匹配".into());
     }
     Ok(())
 }
@@ -708,7 +708,7 @@ fn verify_file_integrity(
 fn verify_release_binary(path: &Path, manifest: &ReleaseManifest) -> Result<(), String> {
     manifest.validate().map_err(|error| error.to_string())?;
     if !storage::executable(path) {
-        return Err("update binary is not executable".into());
+        return Err("更新二进制不可执行".into());
     }
     verify_file_integrity(path, manifest.size, &manifest.sha256)?;
     probe(path, &manifest.version)
@@ -716,52 +716,52 @@ fn verify_release_binary(path: &Path, manifest: &ReleaseManifest) -> Result<(), 
 
 fn verify_staged_slot(paths: &Paths, slot: Slot, manifest: &ReleaseManifest) -> Result<(), String> {
     let stored = storage::read_json::<ReleaseManifest>(&paths.slot_meta(slot))
-        .ok_or_else(|| "staged update metadata is missing or corrupted".to_string())?;
+        .ok_or_else(|| "暂存更新元数据缺失或已损坏".to_string())?;
     if stored != *manifest {
-        return Err("staged update metadata changed after download".into());
+        return Err("暂存更新元数据在下载后发生更改".into());
     }
     verify_release_binary(&paths.slot_binary(slot), manifest)
-        .map_err(|error| format!("staged update failed preflight verification: {error}"))
+        .map_err(|error| format!("暂存更新未通过预检：{error}"))
 }
 
 fn verify_active_slot(paths: &Paths, slot: Slot) -> Result<(), String> {
     let binary = paths.slot_binary(slot);
     if let Some(manifest) = storage::read_json::<ReleaseManifest>(&paths.slot_meta(slot)) {
         if manifest.version != crate::build_info::VERSION {
-            return Err("active rollback slot metadata does not match the running agent".into());
+            return Err("活动回滚槽位元数据与正在运行的 Agent 不匹配".into());
         }
         return verify_release_binary(&binary, &manifest).map_err(|error| {
-            format!("active rollback slot failed preflight verification: {error}")
+            format!("活动回滚槽位未通过预检：{error}")
         });
     }
     if paths.slot_bootstrap_digest(slot).exists() {
         verify_bootstrap_slot(paths, slot, Some(crate::build_info::VERSION)).map_err(|error| {
-            format!("active bootstrap slot failed preflight verification: {error}")
+            format!("活动引导槽位未通过预检：{error}")
         })?;
         return Ok(());
     }
     if !storage::executable(&binary) {
-        return Err("active rollback slot is missing".into());
+        return Err("活动回滚槽位缺失".into());
     }
     probe(&binary, crate::build_info::VERSION)
-        .map_err(|error| format!("active rollback slot failed preflight verification: {error}"))
+        .map_err(|error| format!("活动回滚槽位未通过预检：{error}"))
 }
 
 fn verify_rollback_slot(paths: &Paths, slot: Slot) -> Result<String, String> {
     let binary = paths.slot_binary(slot);
     if let Some(manifest) = storage::read_json::<ReleaseManifest>(&paths.slot_meta(slot)) {
         verify_release_binary(&binary, &manifest)
-            .map_err(|error| format!("rollback slot failed preflight verification: {error}"))?;
+            .map_err(|error| format!("回滚槽位未通过预检：{error}"))?;
         return Ok(manifest.version);
     }
     if paths.slot_bootstrap_digest(slot).exists() {
         return verify_bootstrap_slot(paths, slot, None)
-            .map_err(|error| format!("rollback bootstrap slot failed preflight: {error}"));
+            .map_err(|error| format!("回滚引导槽位未通过预检：{error}"));
     }
     if storage::executable(&binary) {
         Ok("bootstrap-slot".into())
     } else {
-        Err("no previous agent slot is available".into())
+        Err("没有可用的先前 Agent 槽位".into())
     }
 }
 
@@ -771,7 +771,7 @@ fn verify_bootstrap_slot(
     expected_version: Option<&str>,
 ) -> Result<String, String> {
     let identity = fs::read_to_string(paths.slot_bootstrap_digest(slot))
-        .map_err(|error| format!("bootstrap digest is unreadable: {error}"))?;
+        .map_err(|error| format!("无法读取引导摘要：{error}"))?;
     let mut lines = identity.lines();
     let sha256 = lines.next().unwrap_or_default();
     let version = lines.next().unwrap_or_default();
@@ -781,17 +781,17 @@ fn verify_bootstrap_slot(
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
         || Version::parse(version).is_err()
     {
-        return Err("bootstrap identity is malformed".into());
+        return Err("引导身份格式错误".into());
     }
     if expected_version.is_some_and(|expected| expected != version) {
-        return Err("bootstrap identity does not match the running agent".into());
+        return Err("引导身份与正在运行的 Agent 不匹配".into());
     }
     let binary = paths.slot_binary(slot);
     if !storage::executable(&binary) {
-        return Err("bootstrap binary is not executable".into());
+        return Err("引导二进制不可执行".into());
     }
     let size = fs::metadata(&binary)
-        .map_err(|error| format!("bootstrap binary is missing: {error}"))?
+        .map_err(|error| format!("引导二进制缺失：{error}"))?
         .len();
     verify_file_integrity(&binary, size, sha256)?;
     probe(&binary, version)?;
@@ -808,7 +808,7 @@ fn launch_helper(
 ) -> Result<(), String> {
     paths
         .clear_helper_ready()
-        .map_err(|error| format!("cannot clear stale helper handshake: {error}"))?;
+        .map_err(|error| format!("无法清除过期的助手握手：{error}"))?;
     paths
         .write_pending(candidate, previous, version)
         .map_err(|error| error.to_string())?;
@@ -828,7 +828,7 @@ fn launch_helper(
     let mut child = match result {
         Ok(child) => child,
         Err(error) => {
-            return clear_failed_launch(paths, format!("cannot start update helper: {error}"))
+            return clear_failed_launch(paths, format!("无法启动更新助手：{error}"))
         }
     };
     let deadline = Instant::now() + Duration::from_secs(3);
@@ -839,7 +839,7 @@ fn launch_helper(
                 let _ = child.wait();
                 return clear_failed_launch(
                     paths,
-                    format!("cannot clear helper handshake: {error}"),
+                    format!("无法清除助手握手：{error}"),
                 );
             }
             return Ok(());
@@ -847,14 +847,14 @@ fn launch_helper(
         if let Ok(Some(status)) = child.try_wait() {
             return clear_failed_launch(
                 paths,
-                format!("update helper exited before handoff with {status}"),
+                format!("更新助手在交接前退出（{status}）"),
             );
         }
         std::thread::sleep(Duration::from_millis(20));
     }
     let _ = child.kill();
     let _ = child.wait();
-    clear_failed_launch(paths, "update helper did not confirm startup".into())
+    clear_failed_launch(paths, "更新助手未确认启动".into())
 }
 
 fn clear_failed_launch(paths: &Paths, error: String) -> Result<(), String> {
@@ -862,10 +862,10 @@ fn clear_failed_launch(paths: &Paths, error: String) -> Result<(), String> {
     match paths.clear_pending() {
         Ok(()) if ready_error.is_none() => Err(error),
         Ok(()) => Err(format!(
-            "{error}; cannot clear helper handshake: {}",
+            "{error}；无法清除助手握手：{}",
             ready_error.expect("checked")
         )),
-        Err(cleanup) => Err(format!("{error}; cannot clear pending marker: {cleanup}")),
+        Err(cleanup) => Err(format!("{error}；无法清除待处理标记：{cleanup}")),
     }
 }
 
@@ -890,13 +890,13 @@ fn reconcile_startup_state(
             if completed {
                 persistent.available = None;
                 persistent.last_error = None;
-                Some("reconciled a completed update after restart")
+                Some("重启后已核对完成的更新")
             } else {
                 persistent.last_error = Some(
-                    "the previous update trial was interrupted; the previous agent was restored"
+                    "先前的更新试用被中断；已恢复之前的 Agent"
                         .into(),
                 );
-                Some("recovered an interrupted update trial at startup")
+                Some("启动时已恢复被中断的更新试用")
             }
         }
         Phase::RollingBack => {
@@ -904,9 +904,9 @@ fn reconcile_startup_state(
             persistent.staged = None;
             persistent.staged_slot = None;
             persistent.last_error = Some(
-                "the previous rollback trial was interrupted; an active agent was restored".into(),
+                "先前的回滚试用被中断；已恢复可用的 Agent".into(),
             );
-            Some("recovered an interrupted rollback trial at startup")
+            Some("启动时已恢复被中断的回滚试用")
         }
         Phase::Checking | Phase::Downloading => {
             persistent.phase = if persistent.staged.is_some() {
@@ -915,8 +915,8 @@ fn reconcile_startup_state(
                 Phase::Idle
             };
             persistent.last_error =
-                Some("the previous update operation was interrupted; retry the operation".into());
-            Some("recovered an interrupted update operation at startup")
+                Some("先前的更新操作被中断；请重试该操作".into());
+            Some("启动时已恢复被中断的更新操作")
         }
         Phase::Idle | Phase::Staged | Phase::Failed => None,
     }
@@ -961,7 +961,7 @@ fn select_candidate(
             .is_gt()
         {
             return Err(format!(
-                "{} requires updater {} or newer",
+                "{} 需要更新器 {} 或更高版本",
                 release.version, release.minimum_updater_version
             ));
         }
@@ -997,7 +997,7 @@ fn beta_url() -> &'static str {
 }
 
 fn validate_channel_url(value: &str) -> Result<(), String> {
-    let url = reqwest::Url::parse(value).map_err(|_| "invalid release channel URL".to_string())?;
+    let url = reqwest::Url::parse(value).map_err(|_| "无效的发布通道 URL".to_string())?;
     let production = url.scheme() == "https"
         && url.host_str() == Some("raw.githubusercontent.com")
         && url
@@ -1007,7 +1007,7 @@ fn validate_channel_url(value: &str) -> Result<(), String> {
     if production || test {
         Ok(())
     } else {
-        Err("release channel URL is not trusted".into())
+        Err("发布通道 URL 不受信任".into())
     }
 }
 
@@ -1018,11 +1018,11 @@ fn probe(binary: &Path, expected: &str) -> Result<(), String> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map_err(|e| format!("downloaded agent cannot run: {e}"))?;
+        .map_err(|e| format!("下载的 Agent 无法运行：{e}"))?;
     if status.success() {
         Ok(())
     } else {
-        Err("downloaded agent failed its compatibility probe".into())
+        Err("下载的 Agent 未通过兼容性探测".into())
     }
 }
 
@@ -1148,9 +1148,9 @@ fn recover(paths: &Paths, previous: Slot, child: Option<&mut Child>) -> i32 {
             .spawn()
         {
             Ok(_) => return 4,
-            Err(error) => format!("rollback agent could not start: {error}"),
+            Err(error) => format!("回滚 Agent 无法启动：{error}"),
         },
-        Err(error) => format!("rollback agent is no longer safe: {error}"),
+        Err(error) => format!("回滚 Agent 不再安全：{error}"),
     };
     paths.append_log(&previous_error);
 
@@ -1257,20 +1257,20 @@ pub fn install_api(state: &crate::handlers::AppState, body: &[u8]) -> (u16, Valu
     if !confirmed(body) {
         return (
             400,
-            json!({"ok":false,"error":"explicit confirmation required"}),
+            json!({"ok":false,"error":"需要显式确认"}),
         );
     }
     if let Some(reason) = restart_busy_reason(state) {
         return (
             409,
-            json!({"ok":false,"error":format!("update deferred during {reason}")}),
+            json!({"ok":false,"error":format!("更新已推迟（{reason}）")}),
         );
     }
     let readiness = readiness::read(state, Duration::ZERO);
     if let Some(reason) = readiness.blocking_reason().map(str::to_owned) {
         return (
             409,
-            json!({"ok":false,"error":format!("update deferred: {reason}"),"data":{"install_readiness":readiness}}),
+            json!({"ok":false,"error":format!("更新已推迟：{reason}"),"data":{"install_readiness":readiness}}),
         );
     }
     mutate(state, || state.ota.install())
@@ -1280,13 +1280,13 @@ pub fn rollback_api(state: &crate::handlers::AppState, body: &[u8]) -> (u16, Val
     if !confirmed(body) {
         return (
             400,
-            json!({"ok":false,"error":"explicit confirmation required"}),
+            json!({"ok":false,"error":"需要显式确认"}),
         );
     }
     if let Some(reason) = restart_busy_reason(state) {
         return (
             409,
-            json!({"ok":false,"error":format!("rollback deferred during {reason}")}),
+            json!({"ok":false,"error":format!("回滚已推迟（{reason}）")}),
         );
     }
     mutate(state, || state.ota.rollback())
@@ -1297,7 +1297,7 @@ fn mutate(
     action: impl FnOnce() -> Result<(), String>,
 ) -> (u16, Value) {
     if !state.auth.has_password() {
-        return (403, json!({"ok":false,"error":"agent password required"}));
+        return (403, json!({"ok":false,"error":"需要 Agent 密码"}));
     }
     match action() {
         Ok(()) => (200, status_with_readiness(state, readiness::STATUS_MAX_AGE)),
@@ -1541,7 +1541,7 @@ mod tests {
 
         assert_eq!(
             message,
-            Some("recovered an interrupted update trial at startup")
+            Some("启动时已恢复被中断的更新试用")
         );
         assert_eq!(persistent.phase, Phase::Idle);
         assert!(persistent.available.is_some());
@@ -1550,7 +1550,7 @@ mod tests {
         assert!(persistent
             .last_error
             .as_deref()
-            .is_some_and(|error| error.contains("previous agent was restored")));
+            .is_some_and(|error| error.contains("已恢复之前的 Agent")));
     }
 
     #[test]
@@ -1569,7 +1569,7 @@ mod tests {
 
         let message = reconcile_startup_state(&manager.paths, &mut persistent);
 
-        assert_eq!(message, Some("reconciled a completed update after restart"));
+        assert_eq!(message, Some("重启后已核对完成的更新"));
         assert_eq!(persistent.phase, Phase::Idle);
         assert!(persistent.available.is_none());
         assert!(persistent.staged.is_none());
@@ -1613,7 +1613,7 @@ mod tests {
 
         assert_eq!(
             message,
-            Some("recovered an interrupted update operation at startup")
+            Some("启动时已恢复被中断的更新操作")
         );
         assert_eq!(persistent.phase, Phase::Idle);
         assert!(persistent.available.is_some());
@@ -1676,7 +1676,7 @@ mod tests {
                     br#"{"channel":"beta","automatic_checks":true,"automatic_downloads":false}"#,
                 )
                 .unwrap_err(),
-            "another update operation is already running"
+            "另一个更新操作已在运行"
         );
     }
 
@@ -1712,7 +1712,7 @@ mod tests {
         let _first = manager.begin(Phase::Checking).unwrap();
         assert_eq!(
             manager.begin(Phase::Downloading).unwrap_err(),
-            "another update operation is already running"
+            "另一个更新操作已在运行"
         );
     }
 
@@ -1779,7 +1779,7 @@ mod tests {
             )
             .unwrap_err();
             assert!(
-                error.contains("signed size") || error.contains("SHA-256"),
+                error.contains("已签名大小") || error.contains("SHA-256"),
                 "{name}: {error}"
             );
         }
@@ -1812,7 +1812,7 @@ mod tests {
             |_| {},
         )
         .unwrap_err();
-        assert!(total_error.contains("total time limit"), "{total_error}");
+        assert!(total_error.contains("总时间限制"), "{total_error}");
 
         let write_error = stream_verified_binary(
             &mut bytes.as_slice(),
@@ -1823,7 +1823,7 @@ mod tests {
             |_| {},
         )
         .unwrap_err();
-        assert!(write_error.contains("cannot write"), "{write_error}");
+        assert!(write_error.contains("无法写入"), "{write_error}");
     }
 
     #[test]
@@ -1857,7 +1857,7 @@ mod tests {
         write_release_agent(&manager.paths, Slot::B, &changed, &bytes);
 
         let error = verify_staged_slot(&manager.paths, Slot::B, &expected).unwrap_err();
-        assert!(error.contains("metadata changed"), "{error}");
+        assert!(error.contains("元数据在下载后发生更改"), "{error}");
     }
 
     #[test]
@@ -1895,7 +1895,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(error.contains("cannot start update helper"), "{error}");
+        assert!(error.contains("无法启动更新助手"), "{error}");
         assert!(!manager.paths.pending.exists());
     }
 
@@ -1912,7 +1912,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(error.contains("exited before handoff"), "{error}");
+        assert!(error.contains("交接前退出"), "{error}");
         assert!(!manager.paths.pending.exists());
     }
 

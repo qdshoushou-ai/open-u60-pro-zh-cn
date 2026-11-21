@@ -935,15 +935,15 @@ mod tests {
         h.store(Topic::Wan, ok(json!({"up": true})), Instant::now());
         let (v, good) = (version(&h, Topic::Wan), clock.now());
         clock.advance(Duration::from_secs(7));
-        h.store(Topic::Wan, err("ubus timeout"), Instant::now());
+        h.store(Topic::Wan, err("ubus 超时"), Instant::now());
         let view = h.peek(Topic::Wan);
         assert_eq!(view.value.as_deref(), Some(&json!({"up": true})));
-        assert_eq!(view.error.as_deref(), Some("ubus timeout"));
+        assert_eq!(view.error.as_deref(), Some("ubus 超时"));
         assert!(view.version > v);
         // The failed read is the latest read; the value is still the old one's.
         assert_eq!((view.at, view.value_at), (clock.now(), good));
         // The same error again is not a change; a good read clears it.
-        h.store(Topic::Wan, err("ubus timeout"), Instant::now());
+        h.store(Topic::Wan, err("ubus 超时"), Instant::now());
         assert_eq!(version(&h, Topic::Wan), view.version);
         h.store(Topic::Wan, ok(json!({"up": true})), Instant::now());
         let after = h.peek(Topic::Wan);
@@ -1021,7 +1021,7 @@ mod tests {
         let mut expect = [5u64, 10, 20, 40, 60, 60].into_iter();
         for _ in 0..6 {
             let t0 = Instant::now();
-            h.store_at(Topic::Sim, Some(err("no sim")), t0, t0);
+            h.store_at(Topic::Sim, Some(err("SIM 不可用")), t0, t0);
             let secs = expect.next().unwrap();
             assert_eq!(h.due_job(Lane::Ubus, t0), Err(Some(t0 + Duration::from_secs(secs))));
             assert_eq!(h.due_job(Lane::Ubus, t0 + Duration::from_secs(secs)), Ok(Topic::Sim));
@@ -1030,7 +1030,7 @@ mod tests {
         let t0 = Instant::now();
         h.store_at(Topic::Sim, Some(ok(json!({"state": "ready"}))), t0, t0);
         assert_eq!(h.due_job(Lane::Ubus, t0 + Duration::from_secs(3600)), Err(None));
-        h.store_at(Topic::Sim, Some(err("no sim")), t0, t0);
+        h.store_at(Topic::Sim, Some(err("SIM 不可用")), t0, t0);
         assert_eq!(h.due_job(Lane::Ubus, t0), Err(Some(t0 + Duration::from_secs(5))));
     }
 
@@ -1041,15 +1041,15 @@ mod tests {
         // `wan` read, `wan6` failed: the value is stored, the topic is not re-read at once.
         let partial = |e: &str| ReadOut { value: Some(json!({"wan": {"up": true}, "wan6": null})), error: Some(e.into()) };
         let t0 = Instant::now();
-        h.store_at(Topic::Wan, Some(partial("not found")), t0, t0);
+        h.store_at(Topic::Wan, Some(partial("未找到")), t0, t0);
         assert_eq!(h.due_job(Lane::Ubus, t0), Err(Some(t0 + Duration::from_secs(5))));
         // The same failure again (no `zte_wan6` on this router): no timer;
         // the next invalidation re-reads it.
         let t1 = t0 + Duration::from_secs(5);
-        h.store_at(Topic::Wan, Some(partial("not found")), t1, t1);
+        h.store_at(Topic::Wan, Some(partial("未找到")), t1, t1);
         assert_eq!(h.due_job(Lane::Ubus, t1 + Duration::from_secs(3600)), Err(None));
         let view = h.peek(Topic::Wan);
-        assert_eq!((view.value.unwrap()["wan6"].clone(), view.error.as_deref()), (Value::Null, Some("not found")));
+        assert_eq!((view.value.unwrap()["wan6"].clone(), view.error.as_deref()), (Value::Null, Some("未找到")));
         // A different failure is retried, backing off further.
         h.store_at(Topic::Wan, Some(partial("timeout")), t1, t1);
         assert_eq!(h.due_job(Lane::Ubus, t1), Err(Some(t1 + Duration::from_secs(20))));
@@ -1443,7 +1443,7 @@ mod tests {
         h.store_at(Topic::EsimDownload, Some(ok(json!({"state": "done", "finished_at": unix - 599}))), t0, t0);
         let Err(Some(recheck)) = h.due_job(Lane::Fast, t0) else { panic!("no recheck") };
         // The recheck fails (a poisoned lock, say): retried after the backoff, not at once.
-        h.store_at(Topic::EsimDownload, Some(err("internal error")), recheck, recheck);
+        h.store_at(Topic::EsimDownload, Some(err("内部错误")), recheck, recheck);
         assert_eq!(h.due_job(Lane::Fast, recheck), Err(Some(recheck + ERR_BACKOFF_MIN)));
         assert_eq!(h.peek(Topic::EsimDownload).value.unwrap()["state"], "done");
     }

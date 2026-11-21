@@ -12,17 +12,17 @@ struct LastUpdatedView: View {
     private var text: String {
         guard date != nil else { return "--" }
         if elapsed < 60 {
-            return "\(elapsed)s ago"
+            return "\(elapsed)s 前"
         }
-        return "\(elapsed / 60)m \(elapsed % 60)s ago"
+        return "\(elapsed / 60)m \(elapsed % 60)s 前"
     }
 
     private var accessibilityText: String {
-        guard date != nil else { return "Never updated" }
+        guard date != nil else { return "从未更新" }
         if elapsed < 60 {
-            return "Updated \(elapsed) seconds ago"
+            return "\(elapsed) 秒前更新"
         }
-        return "Updated \(elapsed / 60) minutes \(elapsed % 60) seconds ago"
+        return "\(elapsed / 60) 分钟 \(elapsed % 60) 秒前更新"
     }
 
     var body: some View {

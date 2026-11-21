@@ -283,7 +283,7 @@ mod tests {
         let (_, mut route) = crate::server::route(&crate::server::Method::Get, "/api/esim/switch", &app, b"");
         let out = read(Topic::EsimSwitch, &app, &hub).unwrap();
         assert_eq!(out.value.unwrap(), route["data"].take());
-        assert_eq!(data_of((503, json!({"ok": false, "error": "no modem"}))).error.as_deref(), Some("no modem"));
+        assert_eq!(data_of((503, json!({"ok": false, "error": "调制解调器不可用"}))).error.as_deref(), Some("调制解调器不可用"));
     }
 
     /// The app's rule: running and below 100 %; numbers or strings.

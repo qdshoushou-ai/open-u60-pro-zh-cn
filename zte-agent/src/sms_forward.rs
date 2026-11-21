@@ -435,7 +435,7 @@ fn forward_to(
                 "zte_libwms_send_sms",
                 Some(&params.to_string()),
             )
-            .map_err(|e| format!("sms forward: {e}"))?;
+            .map_err(|e| format!("短信转发失败：{e}"))?;
             check_sms_send_result(&resp)?;
 
             // Auto-delete the forwarded outgoing SMS to prevent conversation clutter
@@ -487,11 +487,11 @@ fn check_http_status(status: u16, dest: &str) -> Result<(), String> {
     if (200..300).contains(&status) {
         Ok(())
     } else if status == 429 {
-        Err(format!("{dest}: HTTP 429 rate limited"))
+        Err(format!("{dest}：HTTP 429 触发限流"))
     } else if (400..500).contains(&status) {
-        Err(format!("{dest}: HTTP {status} (permanent error)"))
+        Err(format!("{dest}：HTTP {status}（永久错误）"))
     } else {
-        Err(format!("{dest}: HTTP {status}"))
+        Err(format!("{dest}：HTTP {status}"))
     }
 }
 
@@ -502,7 +502,7 @@ fn check_sms_send_result(resp: &Value) -> Result<(), String> {
         .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
     match result {
         Some(3) | None => Ok(()),
-        Some(code) => Err(format!("sms forward: device rejected (result={code})")),
+        Some(code) => Err(format!("短信转发：设备拒绝（result={code}）")),
     }
 }
 
@@ -558,9 +558,9 @@ fn is_transient_error(err: &str) -> bool {
 fn blocker(wan_ready: bool, has_service: bool, dest: &ForwardDestination) -> Option<&'static str> {
     match dest {
         ForwardDestination::Sms { .. } => {
-            (!has_service).then_some("no cellular service; held for retry")
+            (!has_service).then_some("没有蜂窝网络服务；已保留等待重试")
         }
-        _ => (!wan_ready).then_some("no WAN connectivity; held for retry"),
+        _ => (!wan_ready).then_some("无 WAN 连接；已保留等待重试"),
     }
 }
 
@@ -572,7 +572,7 @@ fn hold_after_failure(result: &Result<(), String>, blocked: bool) -> bool {
 
 /// Log text for a forward held after a transient failure.
 fn held_error(err: &str) -> String {
-    format!("{err}; held for retry")
+    format!("{err}；已保留等待重试")
 }
 
 /// The destination of a held entry's rule, or `Err(reason)` to settle the
@@ -582,15 +582,15 @@ fn pending_action(
     config: &SmsForwardConfig,
 ) -> Result<ForwardDestination, &'static str> {
     if !config.enabled {
-        return Err("forwarding disabled while held");
+        return Err("等待期间转发已停用");
     }
     let rule = config
         .rules
         .iter()
         .find(|r| r.id == entry.rule_id)
-        .ok_or("rule no longer exists")?;
+        .ok_or("规则已不存在")?;
     if !rule.enabled {
-        return Err("rule disabled while held");
+        return Err("等待期间规则已停用");
     }
     Ok(rule.destination.clone())
 }
@@ -635,7 +635,7 @@ fn flush_action(
     match pending_action(entry, config) {
         Err(reason) => Flush::Settle(reason),
         Ok(dest) if !blocked(&dest) => Flush::Send(dest),
-        Ok(_) if hold_expired(entry) => Flush::Settle("held for over 24 h without a link"),
+        Ok(_) if hold_expired(entry) => Flush::Settle("已保留超过 24 小时且无连接"),
         Ok(dest) => Flush::Wait(dest),
     }
 }
@@ -793,17 +793,17 @@ fn retry_target(log: &[ForwardLogEntry], index: usize) -> Result<ForwardLogEntry
         .len()
         .checked_sub(1 + index)
         .and_then(|i| log.get(i))
-        .ok_or((404, json!({"ok": false, "error": "log entry not found"})))?;
+        .ok_or((404, json!({"ok": false, "error": "未找到日志条目"})))?;
     if entry.success {
         return Err((
             400,
-            json!({"ok": false, "error": "entry already succeeded"}),
+            json!({"ok": false, "error": "该条目已成功"}),
         ));
     }
     if entry.pending {
         return Err((
             409,
-            json!({"ok": false, "error": "held; will retry automatically"}),
+            json!({"ok": false, "error": "已保留；将自动重试"}),
         ));
     }
     Ok(entry.clone())
@@ -1468,7 +1468,7 @@ fn forward_with_retry(
         }
     }
 
-    Err(format!("{last_err} (failed after {MAX_RETRIES} retries)"))
+    Err(format!("{last_err}（重试 {MAX_RETRIES} 次后失败）"))
 }
 
 // ── ubus helpers ────────────────────────────────────────────────────
@@ -1642,7 +1642,7 @@ pub fn config_set(state: &AppState, body: &[u8]) -> (u16, Value) {
 
     let req: Req = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     let mut config = state.sms_forward.config.lock().unwrap();
@@ -1652,7 +1652,7 @@ pub fn config_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     }
     if let Some(interval) = req.poll_interval_secs {
         if interval < 10 {
-            return (400, json!({"ok": false, "error": "poll_interval_secs must be >= 10"}));
+            return (400, json!({"ok": false, "error": "poll_interval_secs 必须大于等于 10"}));
         }
         config.poll_interval_secs = interval;
     }
@@ -1681,12 +1681,12 @@ pub fn rules_create(state: &AppState, body: &[u8]) -> (u16, Value) {
 
     let req: Req = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     let mut config = state.sms_forward.config.lock().unwrap();
     let Some(next_id) = next_rule_id(&config.rules, &state.sms_forward.state.lock().unwrap().log) else {
-        return (409, json!({"ok":false,"error":"forwarding rule IDs exhausted"}));
+        return (409, json!({"ok":false,"error":"转发规则 ID 已用尽"}));
     };
 
     let rule = ForwardRule {
@@ -1732,13 +1732,13 @@ pub fn rules_update(state: &AppState, body: &[u8]) -> (u16, Value) {
 
     let req: Req = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     let mut config = state.sms_forward.config.lock().unwrap();
     let rule = match config.rules.iter_mut().find(|r| r.id == req.id) {
         Some(r) => r,
-        None => return (404, json!({"ok": false, "error": "rule not found"})),
+        None => return (404, json!({"ok": false, "error": "规则未找到"})),
     };
 
     rule.name = req.name;
@@ -1756,11 +1756,11 @@ pub fn rules_update(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn rules_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let id = match parsed["id"].as_u64() {
         Some(id) => id as u32,
-        None => return (400, json!({"ok": false, "error": "missing 'id' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 id"})),
     };
 
     let mut config = state.sms_forward.config.lock().unwrap();
@@ -1768,7 +1768,7 @@ pub fn rules_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
     config.rules.retain(|r| r.id != id);
 
     if config.rules.len() == len_before {
-        return (404, json!({"ok": false, "error": "rule not found"}));
+        return (404, json!({"ok": false, "error": "规则未找到"}));
     }
 
     save_config(&config);
@@ -1780,21 +1780,21 @@ pub fn rules_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn rules_toggle(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let id = match parsed["id"].as_u64() {
         Some(id) => id as u32,
-        None => return (400, json!({"ok": false, "error": "missing 'id' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 id"})),
     };
     let enabled = match parsed["enabled"].as_bool() {
         Some(e) => e,
-        None => return (400, json!({"ok": false, "error": "missing 'enabled' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 enabled"})),
     };
 
     let mut config = state.sms_forward.config.lock().unwrap();
     let rule = match config.rules.iter_mut().find(|r| r.id == id) {
         Some(r) => r,
-        None => return (404, json!({"ok": false, "error": "rule not found"})),
+        None => return (404, json!({"ok": false, "error": "规则未找到"})),
     };
 
     rule.enabled = enabled;
@@ -1813,7 +1813,7 @@ pub fn test_forward(state: &AppState, body: &[u8]) -> (u16, Value) {
 
     let req: Req = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     let _ = state; // keep signature consistent
@@ -1821,7 +1821,7 @@ pub fn test_forward(state: &AppState, body: &[u8]) -> (u16, Value) {
     let test_sms = DecodedSms {
         id: 0,
         sender: "+1234567890".to_string(),
-        content: "This is a test message from zte-agent SMS forwarder.".to_string(),
+        content: "这是来自 zte-agent 短信转发器的测试消息。".to_string(),
         date: "2025-01-01 12:00:00".to_string(),
     };
 
@@ -1874,7 +1874,7 @@ fn checked_retry_target(
     }) {
         return Err((
             409,
-            json!({"ok":false,"error":"The forwarding log changed. Review the current entry before retrying."}),
+            json!({"ok":false,"error":"转发日志已更改。重试前请先查看当前条目。"}),
         ));
     }
     Ok(entry)
@@ -1905,7 +1905,7 @@ fn dashboard_snapshot(config: &SmsForwardConfig, log: &[ForwardLogEntry], revisi
         "index":index,"timestamp":entry.timestamp,"sms_id":entry.sms_id,"rule_id":entry.rule_id,
         "sender":entry.sender,"content_preview":entry.content_preview,"rule_name":entry.rule_name,
         "destination_type":entry.destination_type,"success":entry.success,"pending":entry.pending,
-        "error":entry.error.as_ref().map(|_| "Destination did not accept the forward. Check its settings or send a test."),
+        "error":entry.error.as_ref().map(|_| "目标未接受转发。请检查其设置或发送测试。"),
     })).collect();
     json!({"ok":true,"data":{"revision":revision,"config":{
         "enabled":config.enabled,"poll_interval_secs":config.poll_interval_secs,
@@ -1926,7 +1926,7 @@ pub fn retry_forward(state: &AppState, body: &[u8]) -> (u16, Value) {
 
     let req: Req = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     let entry_clone = match checked_retry_target(&state.sms_forward.state.lock().unwrap().log, req.index, req.expected.as_ref()) {
@@ -1938,11 +1938,11 @@ pub fn retry_forward(state: &AppState, body: &[u8]) -> (u16, Value) {
     let dest = {
         let config = state.sms_forward.config.lock().unwrap();
         if req.expected_rule_revision.is_some_and(|revision| revision != state.sms_forward.revision.load(Ordering::Relaxed)) {
-            return (409, json!({"ok":false,"error":"Forwarding rules changed. Review the destination before retrying."}));
+            return (409, json!({"ok":false,"error":"转发规则已更改。重试前请先查看目标。"}));
         }
         match config.rules.iter().find(|r| r.id == entry_clone.rule_id) {
             Some(rule) => rule.destination.clone(),
-            None => return (404, json!({"ok": false, "error": "rule no longer exists"})),
+            None => return (404, json!({"ok": false, "error": "规则已不存在"})),
         }
     };
 
@@ -2039,7 +2039,7 @@ mod tests {
             rule_name: format!("rule {rule_id}"),
             destination_type: "slack".into(),
             success: false,
-            error: Some("no WAN connectivity; held for retry".into()),
+            error: Some("无 WAN 连接；已保留等待重试".into()),
             rule_id,
             content: "body".into(),
             date: String::new(),
@@ -2474,7 +2474,7 @@ mod tests {
 
         let refused = retry_target(&log, 0).err().unwrap();
         assert_eq!(refused.0, 409);
-        assert_eq!(refused.1["error"], "held; will retry automatically");
+        assert_eq!(refused.1["error"], "已保留；将自动重试");
         log[0].success = true;
         assert_eq!(retry_target(&log, held).err().unwrap().0, 400);
         assert_eq!(retry_target(&log, held + 1).err().unwrap().0, 404);

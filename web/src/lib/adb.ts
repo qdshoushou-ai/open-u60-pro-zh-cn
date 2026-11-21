@@ -73,12 +73,12 @@ export class ADBClient {
       this.device!.transferOut(this.epOut!, data as unknown as BufferSource),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(
-          "USB transfer timed out. Device not responding — try replugging the USB cable."
+          "USB 传输超时，设备无响应 —— 请重新插拔 USB 数据线。"
         )), USB_TIMEOUT_MS)
       ),
     ]);
     if (result.status !== "ok") {
-      throw new Error("USB write failed: " + result.status);
+      throw new Error("USB 写入失败：" + result.status);
     }
   }
 
@@ -87,7 +87,7 @@ export class ADBClient {
       this.device!.transferIn(this.epIn!, 64 * 1024),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(
-          "USB transfer timed out. Device not responding — try replugging the USB cable."
+          "USB 传输超时，设备无响应 —— 请重新插拔 USB 数据线。"
         )), USB_TIMEOUT_MS)
       ),
     ]);
@@ -97,7 +97,7 @@ export class ADBClient {
   private async recvMessage(): Promise<ADBMessage> {
     const headerBuf = await this.recv();
     const msg = parseMessage(headerBuf);
-    if (!msg) throw new Error("Failed to parse ADB message header");
+    if (!msg) throw new Error("解析 ADB 消息头失败");
 
     let payload = new Uint8Array(0);
 
@@ -160,7 +160,7 @@ export class ADBClient {
 
     if (!found || this.epIn === null || this.epOut === null) {
       throw new Error(
-        "ADB interface not found on USB device. Is ADB enabled?"
+        "USB 设备上未找到 ADB 接口，ADB 是否已启用？"
       );
     }
 
@@ -181,7 +181,7 @@ export class ADBClient {
 
     if (response.cmd !== CMD_CNXN) {
       throw new Error(
-        "ADB connection handshake failed. Check USB connection."
+        "ADB 连接握手失败，请检查 USB 连接。"
       );
     }
   }
@@ -193,7 +193,7 @@ export class ADBClient {
 
     let msg = await this.recvMessage();
     if (msg.cmd !== CMD_OKAY) {
-      throw new Error("Failed to open ADB shell stream");
+      throw new Error("无法打开 ADB shell 流");
     }
     const remoteId = msg.arg0;
 
@@ -223,7 +223,7 @@ export class ADBClient {
 
     let msg = await this.recvMessage();
     if (msg.cmd !== CMD_OKAY) {
-      throw new Error("Failed to open ADB sync stream");
+      throw new Error("无法打开 ADB sync 流");
     }
     const remoteId = msg.arg0;
 
@@ -236,7 +236,7 @@ export class ADBClient {
 
     await this.sendMessage(CMD_WRTE, localId, remoteId, sendHeader);
     msg = await this.recvMessage();
-    if (msg.cmd !== CMD_OKAY) throw new Error("SEND rejected by device");
+    if (msg.cmd !== CMD_OKAY) throw new Error("设备拒绝了 SEND 请求");
 
     const CHUNK_SIZE = 64 * 1024;
     for (let offset = 0; offset < fileData.length; offset += CHUNK_SIZE) {
@@ -250,7 +250,7 @@ export class ADBClient {
       await this.sendMessage(CMD_WRTE, localId, remoteId, dataPacket);
       msg = await this.recvMessage();
       if (msg.cmd !== CMD_OKAY)
-        throw new Error("DATA chunk rejected by device");
+        throw new Error("设备拒绝了 DATA 数据块");
     }
 
     const donePacket = new Uint8Array(8);
@@ -263,7 +263,7 @@ export class ADBClient {
 
     await this.sendMessage(CMD_WRTE, localId, remoteId, donePacket);
     msg = await this.recvMessage();
-    if (msg.cmd !== CMD_OKAY) throw new Error("DONE rejected by device");
+    if (msg.cmd !== CMD_OKAY) throw new Error("设备拒绝了 DONE 请求");
 
     msg = await this.recvMessage();
     if (msg.cmd === CMD_WRTE) {
@@ -276,7 +276,7 @@ export class ADBClient {
         const errMsg = new TextDecoder().decode(
           msg.data.slice(8, 8 + errLen)
         );
-        throw new Error("Push failed: " + errMsg);
+        throw new Error("推送失败：" + errMsg);
       }
       await this.sendMessage(CMD_OKAY, localId, remoteId, null);
     }

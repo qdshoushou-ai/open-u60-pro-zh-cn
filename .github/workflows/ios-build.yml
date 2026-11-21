@@ -1,0 +1,91 @@
+name: iOS Build (unsigned)
+
+# Builds the OpenU60 iOS app without code signing:
+#  - OpenU60-unsigned.ipa  (device build; sign it with your own Apple ID, e.g. via Sideloadly/AltStore)
+#  - OpenU60-simulator.zip (app bundle for the iOS Simulator)
+#
+# Trigger: Actions → "iOS Build (unsigned)" → Run workflow.
+# Requires a GitHub repository that contains this checkout; no Apple account is needed for these artifacts.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'mobile/ios/**'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: mobile/ios/OpenU60
+        run: xcodegen generate
+
+      - name: Build device app (unsigned)
+        working-directory: mobile/ios/OpenU60
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project OpenU60.xcodeproj \
+            -scheme OpenU60 \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package unsigned IPA
+        working-directory: mobile/ios/OpenU60
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          echo "app: $APP"
+          rm -rf Payload OpenU60-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry OpenU60-unsigned.ipa Payload
+          rm -rf Payload
+          ls -lh OpenU60-unsigned.ipa
+
+      - name: Build simulator app (unsigned)
+        working-directory: mobile/ios/OpenU60
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project OpenU60.xcodeproj \
+            -scheme OpenU60 \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          APP=$(find build-sim/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          echo "app: $APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" OpenU60-simulator.zip
+          ls -lh OpenU60-simulator.zip
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenU60-unsigned-ipa
+          path: mobile/ios/OpenU60/OpenU60-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenU60-simulator-app
+          path: mobile/ios/OpenU60/OpenU60-simulator.zip
+          if-no-files-found: error

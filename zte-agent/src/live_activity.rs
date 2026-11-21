@@ -59,7 +59,7 @@ impl Config {
                     .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
         };
         if !identifier(&self.team_id) || !identifier(&self.key_id) {
-            return Err("team_id and key_id must be 10 uppercase letters/digits");
+            return Err("team_id 和 key_id 必须为 10 位大写字母或数字");
         }
         if self.bundle_id.len() > 255
             || !self.bundle_id.contains('.')
@@ -68,38 +68,38 @@ impl Config {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
         {
-            return Err("invalid bundle_id");
+            return Err("bundle_id 无效");
         }
         if !(15..=3600).contains(&self.interval_seconds)
             || self.stale_after_seconds < self.interval_seconds
             || self.stale_after_seconds > 7200
         {
             return Err(
-                "interval must be 15..3600 seconds; stale interval must be >= interval and <= 7200",
+                "interval 必须为 15..3600 秒；stale interval 必须大于等于 interval 且小于等于 7200",
             );
         }
         if !matches!(self.push_priority, 5 | 10) {
-            return Err("push_priority must be 5 or 10");
+            return Err("push_priority 必须为 5 或 10");
         }
         if !Path::new(&self.key_file).is_absolute() {
-            return Err("key_file must be absolute");
+            return Err("key_file 必须为绝对路径");
         }
         Ok(())
     }
 }
 
 fn private_file(path: &Path) -> Result<String, &'static str> {
-    let meta = fs::symlink_metadata(path).map_err(|_| "private file unavailable")?;
+    let meta = fs::symlink_metadata(path).map_err(|_| "私钥文件不可用")?;
     if !meta.is_file()
         || meta.mode() & 0o077 != 0
         || meta.uid() != unsafe { libc::geteuid() }
         || meta.len() > 16384
     {
         return Err(
-            "private file must be owned by agent user, regular, <=16 KiB, and mode 0600 or 0400",
+            "私钥文件必须属于 Agent 用户、为普通文件、大小不超过 16 KiB，且权限为 0600 或 0400",
         );
     }
-    fs::read_to_string(path).map_err(|_| "cannot read private file")
+    fs::read_to_string(path).map_err(|_| "无法读取私钥文件")
 }
 
 struct Provider {
@@ -111,14 +111,14 @@ fn load_provider() -> Result<Option<Provider>, &'static str> {
         return Ok(None);
     };
     let config: Config = serde_json::from_str(&private_file(Path::new(&path))?)
-        .map_err(|_| "invalid live activity config JSON")?;
+        .map_err(|_| "无效的实时活动配置 JSON")?;
     if !config.enabled {
         return Ok(None);
     }
     config.validate()?;
     let pem = private_file(Path::new(&config.key_file))?;
     let key = SigningKey::from_pkcs8_pem(&pem)
-        .map_err(|_| "key must be an Apple ES256 PKCS#8 PEM .p8 key")?;
+        .map_err(|_| "密钥必须是 Apple ES256 PKCS#8 PEM .p8 密钥")?;
     Ok(Some(Provider { config, key }))
 }
 
@@ -134,10 +134,10 @@ impl Registration {
             || !self.push_token.len().is_multiple_of(2)
             || !self.push_token.bytes().all(|b| b.is_ascii_hexdigit())
         {
-            return Err("push_token must be hexadecimal ActivityKit update token");
+            return Err("push_token 必须为十六进制的 ActivityKit 更新令牌");
         }
         if self.expires_at <= now || self.expires_at > now.saturating_add(8 * 3600) {
-            return Err("expires_at must be Unix seconds within the next 8 hours");
+            return Err("expires_at 必须为未来 8 小时内的 Unix 秒数");
         }
         Ok(())
     }
@@ -215,16 +215,16 @@ impl LiveActivity {
     }
     pub fn register(&self, body: &[u8]) -> (u16, Value) {
         if self.provider.is_none() {
-            return error(503, "live activity provider is disabled or invalid");
+            return error(503, "实时活动提供方已停用或无效");
         }
         let registration: Registration = match serde_json::from_slice(body) {
             Ok(r) => r,
-            Err(_) => return error(400, "invalid registration JSON"),
+            Err(_) => return error(400, "无效的注册 JSON"),
         };
         let Some(clock) = self.trusted_now() else {
             return error(
                 503,
-                "waiting for verified UTC; registration will need retry",
+                "正在等待已验证的 UTC；注册需要重试",
             );
         };
         if let Err(e) = registration.validate(clock) {
@@ -358,7 +358,7 @@ impl LiveActivity {
                 self.state
                     .lock()
                     .unwrap_or_else(|p| p.into_inner())
-                    .last_error = Some("APNs client initialization failed");
+                    .last_error = Some("APNs 客户端初始化失败");
                 return;
             }
         };
@@ -397,7 +397,7 @@ impl LiveActivity {
                         t >= clock.saturating_add(provider.config.stale_after_seconds)
                             || t >= activity.expires_at
                     }) {
-                        Outcome::Retry("signal sample expired before send")
+                        Outcome::Retry("信号采样在发送前已过期")
                     } else {
                         let valid = self
                             .state
@@ -413,7 +413,7 @@ impl LiveActivity {
                 }
                 _ => Outcome::Retry("signal read failed"),
             };
-            reconnect = matches!(result, Outcome::Retry("APNs transport failed"));
+            reconnect = matches!(result, Outcome::Retry("APNs 传输失败"));
             let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
             if state.generation != generation {
                 continue;
@@ -560,10 +560,10 @@ fn send(
         .json(payload)
         .send();
     let Ok(response) = response else {
-        return Outcome::Retry("APNs transport failed");
+        return Outcome::Retry("APNs 传输失败");
     };
     if response.version() != reqwest::Version::HTTP_2 {
-        return Outcome::Stop("APNs did not negotiate HTTP/2");
+        return Outcome::Stop("APNs 未协商 HTTP/2");
     }
     let status = response.status().as_u16();
     if status == 200 {
@@ -576,9 +576,9 @@ fn send(
 }
 fn classify_rejection(status: u16, reason: Option<&str>) -> Outcome {
     match reason {
-        Some("BadDeviceToken" | "DeviceTokenNotForTopic" | "Unregistered") => Outcome::Stop("activity token invalid, expired, or wrong environment/topic"),
-        _ if status == 429 || status >= 500 => Outcome::Retry("APNs throttled or unavailable"),
-        _ => Outcome::Stop("APNs rejected configuration or payload; check Apple credentials, topic, environment and clock"),
+        Some("BadDeviceToken" | "DeviceTokenNotForTopic" | "Unregistered") => Outcome::Stop("活动令牌无效、已过期，或环境/主题不匹配"),
+        _ if status == 429 || status >= 500 => Outcome::Retry("APNs 被限流或不可用"),
+        _ => Outcome::Stop("APNs 拒绝了配置或负载；请检查 Apple 凭据、主题、环境和时钟"),
     }
 }
 
@@ -623,7 +623,7 @@ mod tests {
         assert_eq!(service.register(&body).0, 200);
         let generation = {
             let mut state = service.state.lock().unwrap();
-            state.last_error = Some("APNs transport failed");
+            state.last_error = Some("APNs 传输失败");
             state.last_accepted_at = Some(42);
             state.generation
         };
@@ -632,7 +632,7 @@ mod tests {
         }
         let state = service.state.lock().unwrap();
         assert_eq!(state.generation, generation);
-        assert_eq!(state.last_error, Some("APNs transport failed"));
+        assert_eq!(state.last_error, Some("APNs 传输失败"));
         assert_eq!(state.last_accepted_at, Some(42));
     }
 
@@ -739,7 +739,7 @@ mod tests {
             "test-only-not-a-real-credential",
             &payload(&json!({}), now(), 30),
         );
-        assert!(matches!(result, Outcome::Retry("APNs transport failed")));
+        assert!(matches!(result, Outcome::Retry("APNs 传输失败")));
         assert!(before.elapsed() < Duration::from_secs(2));
     }
 

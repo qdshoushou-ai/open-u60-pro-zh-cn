@@ -163,7 +163,7 @@ final class CallViewModel {
                 startDurationTimer()
             }
         case "incoming", "waiting":
-            callState = .incoming(from: number.isEmpty ? (dir == "mt" ? "Unknown" : number) : number)
+            callState = .incoming(from: number.isEmpty ? (dir == "mt" ? "未知" : number) : number)
         case "held":
             break // keep current state
         case "releasing":

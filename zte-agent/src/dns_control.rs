@@ -280,7 +280,7 @@ fn wait_for_mobile_route() -> Result<(), String> {
         }
         thread::sleep(ROUTE_READY_POLL);
     }
-    Err("mobile interface came up without a default route".to_string())
+    Err("移动网络接口已启用但没有默认路由".to_string())
 }
 
 fn has_ipv6_default_route(table: &str) -> bool {
@@ -338,7 +338,7 @@ fn restore_bootstrap_dns(state: &Arc<AppState>) -> Result<(), String> {
     if config.bootstrap_primary.is_empty() {
         let current = read_router_dns()?;
         if current.mode != "manual" || current.primary.is_empty() {
-            return Err("encrypted DNS has no saved bootstrap resolver".to_string());
+            return Err("加密 DNS 没有已保存的引导解析器".to_string());
         }
         state
             .doh
@@ -472,7 +472,7 @@ pub fn test(state: &AppState, body: &[u8]) -> (u16, Value) {
                 "detail": probe.detail,
             }}),
         ),
-        Err(error) => failure(422, format!("DNS test failed: {error}")),
+        Err(error) => failure(422, format!("DNS 测试失败：{error}")),
     }
 }
 
@@ -490,7 +490,7 @@ fn apply_guarded(state: &AppState, candidate: Candidate) -> (u16, Value) {
         Err(error) => {
             return failure(
                 422,
-                format!("DNS test failed; nothing was changed: {error}"),
+                format!("DNS 测试失败；未做任何更改：{error}"),
             )
         }
     };
@@ -502,7 +502,7 @@ fn apply_guarded(state: &AppState, candidate: Candidate) -> (u16, Value) {
         Err(error) => {
             return failure(
                 503,
-                format!("Could not save the current DNS state: {error}"),
+                format!("无法保存当前 DNS 状态：{error}"),
             )
         }
     };
@@ -510,11 +510,11 @@ fn apply_guarded(state: &AppState, candidate: Candidate) -> (u16, Value) {
         return match restore(state, &snapshot) {
             Ok(()) => (
                 502,
-                json!({"ok":false,"error":format!("{error}. Previous DNS settings were restored."),"data":{"rolled_back":true}}),
+                json!({"ok":false,"error":format!("{error}。已恢复之前的 DNS 设置。"),"data":{"rolled_back":true}}),
             ),
             Err(rollback) => (
                 500,
-                json!({"ok":false,"error":format!("{error}. Automatic rollback also failed: {rollback}"),"data":{"rolled_back":false}}),
+                json!({"ok":false,"error":format!("{error}。自动回滚也失败了：{rollback}"),"data":{"rolled_back":false}}),
             ),
         };
     }
@@ -538,7 +538,7 @@ fn apply_guarded(state: &AppState, candidate: Candidate) -> (u16, Value) {
 pub fn legacy_router_apply(state: &AppState, body: &[u8]) -> (u16, Value) {
     let value: Value = match serde_json::from_slice(body) {
         Ok(value) => value,
-        Err(_) => return failure(400, "invalid JSON".to_string()),
+        Err(_) => return failure(400, "无效的 JSON".to_string()),
     };
     let old_mode = value["dns_mode"].as_str().unwrap_or_default();
     let config = state.doh.config();
@@ -549,7 +549,7 @@ pub fn legacy_router_apply(state: &AppState, body: &[u8]) -> (u16, Value) {
             EncryptedTransport::Dot => Mode::Dot,
         },
         "manual" => Mode::Manual,
-        _ => return failure(400, "dns_mode must be auto or manual".to_string()),
+        _ => return failure(400, "dns_mode 必须为 auto 或 manual".to_string()),
     };
     let request = json!({
         "mode": mode.as_str(),
@@ -565,7 +565,7 @@ pub fn legacy_router_apply(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn legacy_doh_config(state: &AppState, body: &[u8]) -> (u16, Value) {
     let patch: crate::doh::config::DohConfigPatch = match serde_json::from_slice(body) {
         Ok(patch) => patch,
-        Err(error) => return failure(400, format!("invalid config JSON: {error}")),
+        Err(error) => return failure(400, format!("无效的配置 JSON：{error}")),
     };
     let mut next = state.doh.config();
     next.apply_patch(patch);
@@ -664,34 +664,34 @@ pub fn clear_cache(state: &AppState) -> (u16, Value) {
         ),
         Err(error) => failure(
             503,
-            format!("Agent cache cleared, but firmware cache clear failed: {error}"),
+            format!("Agent 缓存已清除，但固件缓存清除失败：{error}"),
         ),
     }
 }
 
 fn parse_candidate(state: &AppState, body: &[u8]) -> Result<Candidate, String> {
     let request: Request =
-        serde_json::from_slice(body).map_err(|error| format!("invalid DNS settings: {error}"))?;
+        serde_json::from_slice(body).map_err(|error| format!("无效的 DNS 设置：{error}"))?;
     let mode = match request.mode.as_str() {
         "automatic" => Mode::Automatic,
         "manual" => Mode::Manual,
         "doh" => Mode::Doh,
         "dot" => Mode::Dot,
-        _ => return Err("mode must be automatic, manual, doh or dot".to_string()),
+        _ => return Err("模式必须为 automatic、manual、doh 或 dot".to_string()),
     };
     let needs_servers = mode != Mode::Automatic;
     let primary = parse_server(&request.primary, "Primary DNS", needs_servers)?;
     let secondary = parse_server(&request.secondary, "Secondary DNS", false)?;
     if primary.is_some() && primary == secondary {
-        return Err("Primary and secondary DNS must be different".to_string());
+        return Err("主 DNS 和辅 DNS 必须不同".to_string());
     }
     if let Ok(lan) = ubus::uci_get("network.lan.ipaddr").and_then(|value| {
         value
             .parse::<IpAddr>()
-            .map_err(|error| format!("LAN address: {error}"))
+            .map_err(|error| format!("LAN 地址：{error}"))
     }) {
         if primary == Some(lan) || secondary == Some(lan) {
-            return Err("A DNS server cannot be the router's own LAN address".to_string());
+            return Err("DNS 服务器不能是路由器自身的 LAN 地址".to_string());
         }
     }
 
@@ -728,17 +728,17 @@ fn parse_server(value: &str, label: &str, required: bool) -> Result<Option<IpAdd
     let value = value.trim();
     if value.is_empty() {
         return if required {
-            Err(format!("{label} is required"))
+            Err(format!("{label} 为必填项"))
         } else {
             Ok(None)
         };
     }
     let address: IpAddr = value
         .parse()
-        .map_err(|_| format!("{label} must be an IPv4 address"))?;
+        .map_err(|_| format!("{label} 必须为 IPv4 地址"))?;
     if address.is_ipv6() {
         return Err(format!(
-            "{label} must be IPv4 because this U60 firmware rejects IPv6 manual DNS settings"
+            "{label} 必须为 IPv4，因为此 U60 固件拒绝 IPv6 手动 DNS 设置"
         ));
     }
     let invalid = match address {
@@ -751,30 +751,30 @@ fn parse_server(value: &str, label: &str, required: bool) -> Result<Option<IpAdd
         IpAddr::V6(ip) => ip.is_unspecified() || ip.is_loopback() || ip.is_multicast(),
     };
     if invalid {
-        Err(format!("{label} is not a usable DNS server"))
+        Err(format!("{label} 不是可用的 DNS 服务器"))
     } else {
         Ok(Some(address))
     }
 }
 
 fn validate_doh_url(value: &str) -> Result<(), String> {
-    let url = reqwest::Url::parse(value.trim()).map_err(|_| "Enter a valid DoH URL".to_string())?;
+    let url = reqwest::Url::parse(value.trim()).map_err(|_| "请输入有效的 DoH URL".to_string())?;
     if url.scheme() != "https"
         || url.host_str().is_none()
         || !url.username().is_empty()
         || url.password().is_some()
     {
-        return Err("DoH must use an https:// URL without credentials".to_string());
+        return Err("DoH 必须使用不含凭据的 https:// URL".to_string());
     }
     let host = url.host_str().unwrap_or_default();
     if host.eq_ignore_ascii_case("localhost") || host.ends_with(".localhost") {
-        return Err("DoH cannot use localhost".to_string());
+        return Err("DoH 不能使用 localhost".to_string());
     }
     if host
         .parse::<IpAddr>()
         .is_ok_and(|ip| ip.is_unspecified() || ip.is_loopback() || ip.is_multicast())
     {
-        return Err("DoH host is not a usable resolver".to_string());
+        return Err("DoH 主机不是可用的解析器".to_string());
     }
     Ok(())
 }
@@ -782,10 +782,10 @@ fn validate_doh_url(value: &str) -> Result<(), String> {
 fn normalize_dot_endpoint(value: &str) -> Result<String, String> {
     let value = value.trim();
     if value.is_empty() {
-        return Err("DoT server is required".to_string());
+        return Err("DoT 服务器为必填项".to_string());
     }
     let url = reqwest::Url::parse(&format!("https://{value}/")).map_err(|_| {
-        "DoT server must be a host or IP, optionally followed by a port".to_string()
+        "DoT 服务器必须是主机名或 IP，可选后跟端口".to_string()
     })?;
     if !url.username().is_empty()
         || url.password().is_some()
@@ -794,24 +794,24 @@ fn normalize_dot_endpoint(value: &str) -> Result<String, String> {
         || url.fragment().is_some()
         || url.port() == Some(0)
     {
-        return Err("DoT server must contain only a host or IP and an optional port".to_string());
+        return Err("DoT 服务器只能包含主机名或 IP，以及可选的端口".to_string());
     }
     let host = url
         .host_str()
         .filter(|host| !host.is_empty())
-        .ok_or_else(|| "DoT server is invalid".to_string())?;
+        .ok_or_else(|| "DoT 服务器无效".to_string())?;
     let host = host
         .strip_prefix('[')
         .and_then(|host| host.strip_suffix(']'))
         .unwrap_or(host);
     if host.eq_ignore_ascii_case("localhost") || host.ends_with(".localhost") {
-        return Err("DoT cannot use localhost".to_string());
+        return Err("DoT 不能使用 localhost".to_string());
     }
     if host
         .parse::<IpAddr>()
         .is_ok_and(|ip| ip.is_unspecified() || ip.is_loopback() || ip.is_multicast())
     {
-        return Err("DoT host is not a usable resolver".to_string());
+        return Err("DoT 主机不是可用的解析器".to_string());
     }
     let port = url.port().unwrap_or(853);
     Ok(if host.contains(':') {
@@ -824,11 +824,11 @@ fn normalize_dot_endpoint(value: &str) -> Result<String, String> {
 fn validate_server_name(value: &str) -> Result<(), String> {
     let value = value.trim();
     if value.is_empty() || value.parse::<IpAddr>().is_ok() {
-        return Err("DoT TLS name must be the resolver's certificate hostname".to_string());
+        return Err("DoT TLS 名称必须为解析器证书的主机名".to_string());
     }
     ServerName::try_from(value.to_string())
         .map(|_| ())
-        .map_err(|_| "DoT TLS name is invalid".to_string())
+        .map_err(|_| "DoT TLS 名称无效".to_string())
 }
 
 fn snapshot(state: &AppState) -> Result<Snapshot, String> {
@@ -850,7 +850,7 @@ fn read_router_dns() -> Result<RouterDns, String> {
     };
     let mode = get("dns_mode");
     if mode.is_empty() {
-        return Err("router did not report its DNS mode".to_string());
+        return Err("路由器未报告其 DNS 模式".to_string());
     }
     let mut primary = get("prefer_dns_manual");
     let mut secondary = get("standby_dns_manual");
@@ -927,7 +927,7 @@ fn set_forwarding(enabled: bool) -> Result<(), String> {
         ensure_forwarding_file()?;
     } else if let Err(error) = fs::remove_file(FORWARDING_PATH) {
         if error.kind() != std::io::ErrorKind::NotFound {
-            return Err(format!("remove encrypted DNS forwarding: {error}"));
+            return Err(format!("移除加密 DNS 转发失败：{error}"));
         }
     }
     restart_dnsmasq()
@@ -942,7 +942,7 @@ fn ensure_forwarding_file() -> Result<bool, String> {
         return Ok(false);
     }
     fs::write(FORWARDING_PATH, expected)
-        .map_err(|error| format!("write encrypted DNS forwarding: {error}"))?;
+        .map_err(|error| format!("写入加密 DNS 转发失败：{error}"))?;
     Ok(true)
 }
 
@@ -950,12 +950,12 @@ fn restart_dnsmasq() -> Result<(), String> {
     let output = Command::new("/etc/init.d/dnsmasq")
         .arg("restart")
         .output()
-        .map_err(|error| format!("restart DNS service: {error}"))?;
+        .map_err(|error| format!("重启 DNS 服务失败：{error}"))?;
     if output.status.success() {
         Ok(())
     } else {
         Err(format!(
-            "restart DNS service failed: {}",
+            "重启 DNS 服务失败：{}",
             String::from_utf8_lossy(&output.stderr).trim()
         ))
     }
@@ -967,7 +967,7 @@ fn probe_candidate(candidate: &Candidate) -> Result<Probe, String> {
         Mode::Automatic => {
             let servers = carrier_servers();
             if servers.is_empty() {
-                return Err("the carrier supplied no DNS servers".to_string());
+                return Err("运营商未提供 DNS 服务器".to_string());
             }
             let mut errors = Vec::new();
             for (index, server) in servers.iter().enumerate() {
@@ -976,12 +976,12 @@ fn probe_candidate(candidate: &Candidate) -> Result<Probe, String> {
                         Ok(()) => {
                             return Ok(Probe {
                                 latency_ms: started.elapsed().as_millis(),
-                                detail: format!("Carrier DNS {server} answered"),
+                                detail: format!("运营商 DNS {server} 已应答"),
                             })
                         }
                         Err(error) => errors.push(error),
                     },
-                    Err(_) => errors.push(format!("invalid carrier DNS {server}")),
+                    Err(_) => errors.push(format!("无效的运营商 DNS {server}")),
                 }
             }
             Err(errors.join("; "))
@@ -1027,18 +1027,18 @@ fn probe_candidate(candidate: &Candidate) -> Result<Probe, String> {
 fn verify_effective(state: &AppState, candidate: &Candidate) -> Result<(), String> {
     if matches!(candidate.mode, Mode::Doh | Mode::Dot) {
         if !state.doh.is_running() {
-            return Err("encrypted DNS proxy stopped after apply".to_string());
+            return Err("应用后加密 DNS 代理已停止".to_string());
         }
         let listen: SocketAddr = candidate
             .encrypted
             .listen_addr
             .parse()
-            .map_err(|_| "encrypted DNS listen address is invalid".to_string())?;
+            .map_err(|_| "加密 DNS 监听地址无效".to_string())?;
         query_udp_socket(listen, 0x6400)?;
     }
     let lan: IpAddr = ubus::uci_get("network.lan.ipaddr")?
         .parse()
-        .map_err(|error| format!("router LAN address is invalid: {error}"))?;
+        .map_err(|error| format!("路由器 LAN 地址无效：{error}"))?;
     let target = SocketAddr::new(lan, 53);
     let mut last = String::new();
     for attempt in 0..4 {
@@ -1048,7 +1048,7 @@ fn verify_effective(state: &AppState, candidate: &Candidate) -> Result<(), Strin
         }
         thread::sleep(Duration::from_millis(250));
     }
-    Err(format!("router DNS verification failed: {last}"))
+    Err(format!("路由器 DNS 验证失败：{last}"))
 }
 
 fn query_udp(server: IpAddr, id: u16) -> Result<(), String> {
@@ -1061,25 +1061,25 @@ fn query_udp_socket(server: SocketAddr, id: u16) -> Result<(), String> {
     } else {
         "[::]:0"
     };
-    let socket = UdpSocket::bind(bind).map_err(|error| format!("DNS socket: {error}"))?;
+    let socket = UdpSocket::bind(bind).map_err(|error| format!("DNS 套接字：{error}"))?;
     socket
         .set_read_timeout(Some(DNS_TIMEOUT))
-        .map_err(|error| format!("DNS timeout: {error}"))?;
+        .map_err(|error| format!("DNS 超时：{error}"))?;
     socket
         .connect(server)
-        .map_err(|error| format!("DNS server {server}: {error}"))?;
+        .map_err(|error| format!("DNS 服务器 {server}：{error}"))?;
     let query = crate::doh::dns_packet::build_query(id, PROBE_NAME, 1)?;
     socket
         .send(&query)
-        .map_err(|error| format!("DNS query to {server}: {error}"))?;
+        .map_err(|error| format!("向 {server} 发起的 DNS 查询失败：{error}"))?;
     let mut response = [0u8; 4096];
     let length = socket
         .recv(&mut response)
-        .map_err(|error| format!("DNS server {server} did not answer: {error}"))?;
+        .map_err(|error| format!("DNS 服务器 {server} 未应答：{error}"))?;
     if crate::doh::dns_packet::successful_response(&response[..length], id) {
         Ok(())
     } else {
-        Err(format!("DNS server {server} returned no usable answer"))
+        Err(format!("DNS 服务器 {server} 未返回可用的应答"))
     }
 }
 
@@ -1098,7 +1098,7 @@ fn carrier_servers() -> Vec<String> {
 
 fn clear_dnsmasq_cache() -> Result<usize, String> {
     let mut signalled = 0;
-    let entries = fs::read_dir("/proc").map_err(|error| format!("read processes: {error}"))?;
+    let entries = fs::read_dir("/proc").map_err(|error| format!("读取进程列表失败：{error}"))?;
     for entry in entries.flatten() {
         let Some(pid) = entry
             .file_name()
@@ -1119,7 +1119,7 @@ fn clear_dnsmasq_cache() -> Result<usize, String> {
         }
     }
     if signalled == 0 {
-        Err("dnsmasq process not found".to_string())
+        Err("未找到 dnsmasq 进程".to_string())
     } else {
         Ok(signalled)
     }
@@ -1147,19 +1147,19 @@ mod tests {
     fn manual_rejects_loopback_and_duplicate_servers() {
         let local =
             parse_candidate(&state(), br#"{"mode":"manual","primary":"127.0.0.1"}"#).unwrap_err();
-        assert!(local.contains("not a usable"), "{local}");
+        assert!(local.contains("不是可用的"), "{local}");
         let duplicate = parse_candidate(
             &state(),
             br#"{"mode":"manual","primary":"1.1.1.1","secondary":"1.1.1.1"}"#,
         )
         .unwrap_err();
-        assert!(duplicate.contains("different"), "{duplicate}");
+        assert!(duplicate.contains("必须不同"), "{duplicate}");
         let ipv6 = parse_candidate(
             &state(),
             br#"{"mode":"manual","primary":"2a07:a8c0::94:a9b1"}"#,
         )
         .unwrap_err();
-        assert!(ipv6.contains("U60 firmware"), "{ipv6}");
+        assert!(ipv6.contains("U60 固件"), "{ipv6}");
     }
 
     #[test]
@@ -1175,7 +1175,7 @@ mod tests {
             br#"{"mode":"dot","primary":"1.1.1.1","dot_endpoint":"1.1.1.1","dot_server_name":"1.1.1.1"}"#,
         )
         .unwrap_err();
-        assert!(dot.contains("certificate hostname"), "{dot}");
+        assert!(dot.contains("证书的主机名"), "{dot}");
 
         let nextdns = parse_candidate(
             &state(),

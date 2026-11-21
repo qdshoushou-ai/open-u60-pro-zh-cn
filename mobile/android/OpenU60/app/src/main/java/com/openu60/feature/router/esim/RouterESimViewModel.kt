@@ -109,7 +109,7 @@ class RouterESimViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                setError("Could not read eSIM profiles: ${errorText(e)}")
+                setError("无法读取 eSIM 配置：${errorText(e)}")
             } finally {
                 _state.value = _state.value.copy(isLoading = false, hasLoaded = true)
             }
@@ -185,13 +185,13 @@ class RouterESimViewModel @Inject constructor(
                 if (outcomeUnknown(e)) {
                     // The card command failed or timed out, but the card may have switched: the agent checks.
                     beginFollowingSwitch(target)
-                    _state.value = _state.value.copy(message = "The router is checking whether the switch happened.", messageIsError = false)
+                    _state.value = _state.value.copy(message = "路由器正在检查切换是否成功。", messageIsError = false)
                     return@launch
                 }
                 reconnectTracker = null
                 switchedAt = null
                 _state.value = _state.value.copy(connectionPhase = RouterESimConnectionPhase.UNAVAILABLE, switchingTo = null)
-                setError("Switch failed: ${errorText(e)}")
+                setError("切换失败：${errorText(e)}")
             } finally {
                 _state.value = _state.value.copy(isSwitching = false)
                 nextStatusCheck = 0L
@@ -219,7 +219,7 @@ class RouterESimViewModel @Inject constructor(
         val target = _state.value.pendingRename ?: return
         val nickname = name.trim()
         _state.value = _state.value.copy(pendingRename = null)
-        if (nickname.toByteArray().size > 64) { setError("Nicknames can be up to 64 bytes."); return }
+        if (nickname.toByteArray().size > 64) { setError("昵称最长 64 字节。"); return }
         if (_state.value.blocksSwitching || nickname == target.nickname) return
         _state.value = _state.value.copy(operationInFlight = true, message = null)
         viewModelScope.launch {
@@ -227,7 +227,7 @@ class RouterESimViewModel @Inject constructor(
                 while (downloadInFlight) delay(50)
                 withReauth { agentClient.postJSON("/api/esim/nickname", mapOf("iccid" to target.iccid, "nickname" to nickname)) }
                 withReauth { loadProfiles() }
-                _state.value = _state.value.copy(message = if (nickname.isEmpty()) "Nickname cleared." else "Renamed to $nickname.", messageIsError = false)
+                _state.value = _state.value.copy(message = if (nickname.isEmpty()) "昵称已清除。" else "已重命名为 $nickname。", messageIsError = false)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { setError(errorText(e)) }
             finally { _state.value = _state.value.copy(operationInFlight = false) }
@@ -245,7 +245,7 @@ class RouterESimViewModel @Inject constructor(
                 val left = withReauth { agentClient.get<RouterESimNotifications>("/api/esim/notifications") }.count
                 _state.value = _state.value.copy(
                     pendingReceipts = left ?: _state.value.pendingReceipts,
-                    message = if (left == 0) "Operator receipts sent." else "Some receipts couldn't be sent yet. The router keeps retrying.",
+                    message = if (left == 0) "运营商回执已发送。" else "部分回执暂时无法发送，路由器会继续重试。",
                     messageIsError = left != 0,
                 )
             } catch (e: CancellationException) { throw e }
@@ -272,8 +272,8 @@ class RouterESimViewModel @Inject constructor(
                 }
                 withReauth { loadProfiles() }
                 loadChip()
-                val suffix = if (result.operatorNotified) "" else " The operator will be notified on the next eSIM change."
-                _state.value = _state.value.copy(message = "${target.displayName} deleted.$suffix", messageIsError = false)
+                val suffix = if (result.operatorNotified) "" else " 运营商将在下次 eSIM 变更时收到通知。"
+                _state.value = _state.value.copy(message = "${target.displayName} 已删除。$suffix", messageIsError = false)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { setError(errorText(e)) }
             finally { _state.value = _state.value.copy(operationInFlight = false) }
@@ -284,7 +284,7 @@ class RouterESimViewModel @Inject constructor(
         if (_state.value.blocksSwitching) return
         val parsed = RouterESimActivationCode.parse(code) ?: return
         if (parsed.needsConfirmationCode && !RouterESimActivationCode.validConfirmationCode(confirmationCode)) {
-            _state.value = _state.value.copy(downloadNote = "Enter the confirmation code from your operator (up to 64 characters).")
+            _state.value = _state.value.copy(downloadNote = "输入运营商提供的确认码（最多 64 个字符）。")
             return
         }
         val body = buildJsonObject {
@@ -355,7 +355,7 @@ class RouterESimViewModel @Inject constructor(
     }
 
     private fun errorText(error: Exception): String {
-        val text = (error.message ?: "Couldn’t contact the router.").removePrefix("Server error: ")
+        val text = (error.message ?: "无法连接路由器。").removePrefix("Server error: ")
         return runCatching { Json.parseToJsonElement(text).jsonObject["error"]?.jsonPrimitive?.contentOrNull }.getOrNull() ?: text
     }
 
@@ -379,7 +379,7 @@ class RouterESimViewModel @Inject constructor(
             var note: String? = null
             val phase = if (tracker != null && switchedAt != null) {
                 if (sim.status.orEmpty().lowercase() in setOf("wait pin", "wait puk")) {
-                    note = "The SIM needs to be unlocked. Open SIM Card to continue."
+                    note = "SIM 需要解锁。请打开 SIM 卡页面继续。"
                     RouterESimConnectionPhase.WAITING
                 } else tracker.phase(sim.iccid.orEmpty(), status, (SystemClock.elapsedRealtime() - switchedAt!!) / 1000.0)
             } else if (status.isEmpty()) RouterESimConnectionPhase.UNAVAILABLE
@@ -453,17 +453,17 @@ class RouterESimViewModel @Inject constructor(
                 inventory = fresh,
                 profiles = fresh.profiles,
                 pendingReceipts = fresh.pendingReceipts,
-                listError = fresh.errorText?.let { "$it Showing the list read at ${clock(fresh.observedAt)}." },
+                listError = fresh.errorText?.let { "$it 显示的是 ${clock(fresh.observedAt)} 读取的列表。" },
             )
         } catch (e: CancellationException) { throw e }
         catch (e: AgentError.Unauthorized) { throw e }
         catch (e: Exception) {
-            _state.value = _state.value.copy(listError = "Couldn't read eSIM profiles: ${errorText(e)}")
+            _state.value = _state.value.copy(listError = "无法读取 eSIM 配置：${errorText(e)}")
         }
     }
 
     private fun clock(unix: Long): String =
-        if (unix <= 0) "an earlier time"
+        if (unix <= 0) "较早时间"
         else java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(unix * 1000))
 
     /** The agent replies `outcome: "unknown"` when the card command failed or timed out mid-switch. */

@@ -7,39 +7,39 @@ export interface ComparisonRow {
 
 export const comparisonData: ComparisonRow[] = [
   {
-    label: "Processes",
+    label: "进程数",
     agent: "1",
     official: "44",
     agentGood: true,
   },
   {
-    label: "Memory (RSS)",
+    label: "内存（RSS）",
     agent: "~0.8 MB",
     official: "225 MB",
     agentGood: true,
   },
   {
-    label: "Binary Size",
+    label: "二进制体积",
     agent: "~2.3 MB",
-    official: "~50+ MB combined",
+    official: "合计 ~50+ MB",
     agentGood: true,
   },
   {
-    label: "Threads",
+    label: "线程数",
     agent: "~10",
     official: "~130+",
     agentGood: true,
   },
   {
-    label: "Telemetry",
-    agent: "None",
-    official: "Phones home to iot.zte.com.cn",
+    label: "遥测",
+    agent: "无",
+    official: "会向 iot.zte.com.cn 回传数据",
     agentGood: true,
   },
   {
     label: "App",
-    agent: "Open-source iOS/Android",
-    official: "Closed-source, Chinese-only",
+    agent: "开源 iOS/Android",
+    official: "闭源，仅提供中文版",
     agentGood: true,
   },
 ];

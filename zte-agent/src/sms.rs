@@ -10,7 +10,7 @@ const SMS_DB_PATH: &str = "/etc_rw/ztembb/ztesms/sms_db/sms.db";
 pub fn sms_list(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_wms", "zte_libwms_get_sms_data", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -28,7 +28,7 @@ pub fn sms_capacity(_state: &AppState) -> (u16, Value) {
 pub fn sms_send(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_wms", "zte_libwms_send_sms", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),
@@ -47,12 +47,12 @@ pub fn sms_send(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn sms_delete(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
 
     let ids = match parse_ids(parsed.get("id")) {
         Ok(v) if !v.is_empty() => v,
-        Ok(_) => return (400, json!({"ok": false, "error": "no ids in 'id' field"})),
+        Ok(_) => return (400, json!({"ok": false, "error": "id 字段中没有 ID"})),
         Err(e) => return (400, json!({"ok": false, "error": e})),
     };
 
@@ -62,8 +62,8 @@ pub fn sms_delete(_state: &AppState, body: &[u8]) -> (u16, Value) {
         Ok(v) => v,
         Err(e) => {
             return match ubus_result {
-                Ok(data) => (200, json!({"ok": true, "data": data, "warning": format!("db check skipped: {e}")})),
-                Err(ubus_err) => (503, json!({"ok": false, "error": format!("ubus: {ubus_err}; db: {e}")})),
+                Ok(data) => (200, json!({"ok": true, "data": data, "warning": format!("跳过数据库检查：{e}")})),
+                Err(ubus_err) => (503, json!({"ok": false, "error": format!("ubus：{ubus_err}；数据库：{e}")})),
             };
         }
     };
@@ -80,14 +80,14 @@ pub fn sms_delete(_state: &AppState, body: &[u8]) -> (u16, Value) {
             200,
             json!({"ok": true, "deleted_via": "sqlite", "ids": survivors}),
         ),
-        Err(e) => (503, json!({"ok": false, "error": format!("sqlite delete failed: {e}")})),
+        Err(e) => (503, json!({"ok": false, "error": format!("SQLite 删除失败：{e}")})),
     }
 }
 
 /// Parse the legacy ZTE id format (semicolon-joined with trailing `;`).
 fn parse_ids(field: Option<&Value>) -> Result<Vec<i64>, String> {
-    let raw = field.ok_or_else(|| "missing 'id' field".to_string())?;
-    let s = raw.as_str().ok_or_else(|| "'id' must be a string".to_string())?;
+    let raw = field.ok_or_else(|| "缺少字段 id".to_string())?;
+    let s = raw.as_str().ok_or_else(|| "id 必须为字符串".to_string())?;
     let mut out = Vec::new();
     for part in s.split(';') {
         let p = part.trim();
@@ -96,7 +96,7 @@ fn parse_ids(field: Option<&Value>) -> Result<Vec<i64>, String> {
         }
         let n: i64 = p
             .parse()
-            .map_err(|_| format!("invalid id '{p}' (must be integer)"))?;
+            .map_err(|_| format!("无效的 id“{p}”（必须为整数）"))?;
         out.push(n);
     }
     Ok(out)
@@ -116,7 +116,7 @@ fn db_filter_existing(ids: &[i64]) -> Result<Vec<i64>, String> {
     let output = Command::new("/usr/bin/sqlite3")
         .args(["-cmd", ".timeout 2000", "-readonly", SMS_DB_PATH, &sql])
         .output()
-        .map_err(|e| format!("spawn sqlite3: {e}"))?;
+        .map_err(|e| format!("启动 sqlite3 失败：{e}"))?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
@@ -147,7 +147,7 @@ fn db_delete_ids(ids: &[i64]) -> Result<(), String> {
     let output = Command::new("/usr/bin/sqlite3")
         .args(["-cmd", ".timeout 2000", SMS_DB_PATH, &sql])
         .output()
-        .map_err(|e| format!("spawn sqlite3: {e}"))?;
+        .map_err(|e| format!("启动 sqlite3 失败：{e}"))?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
@@ -157,7 +157,7 @@ fn db_delete_ids(ids: &[i64]) -> Result<(), String> {
 pub fn sms_mark_read(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match ubus::call("zwrt_wms", "zwrt_wms_modify_tag", Some(&parsed.to_string())) {
         Ok(data) => (200, json!({"ok": true, "data": data})),

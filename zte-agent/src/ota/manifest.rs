@@ -159,41 +159,41 @@ impl ManifestVerifier {
 
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]
 pub enum ManifestError {
-    #[error("release signing key is not configured")]
+    #[error("未配置发布签名密钥")]
     SigningKeyUnavailable,
-    #[error("signed release envelope is too large")]
+    #[error("已签名的发布信封过大")]
     EnvelopeTooLarge,
-    #[error("invalid signed release envelope")]
+    #[error("无效的已签名发布信封")]
     InvalidEnvelope,
-    #[error("unsupported signed release envelope schema")]
+    #[error("不支持的已签名发布信封架构")]
     UnsupportedEnvelopeSchema,
-    #[error("release was signed by an unknown key")]
+    #[error("发布由未知密钥签名")]
     UnknownKey,
-    #[error("release signature is invalid")]
+    #[error("发布签名无效")]
     InvalidSignature,
-    #[error("invalid release manifest")]
+    #[error("无效的发布清单")]
     InvalidManifest,
-    #[error("unsupported release manifest schema")]
+    #[error("不支持的发布清单架构")]
     UnsupportedManifestSchema,
-    #[error("invalid release version")]
+    #[error("无效的发布版本")]
     InvalidVersion,
-    #[error("invalid minimum updater version")]
+    #[error("无效的最低更新器版本")]
     InvalidMinimumVersion,
-    #[error("release tag does not match its version")]
+    #[error("发布标签与其版本不匹配")]
     TagMismatch,
-    #[error("release channel does not match its version")]
+    #[error("发布通道与其版本不匹配")]
     ChannelMismatch,
-    #[error("release is for a different target")]
+    #[error("发布面向其他目标平台")]
     WrongTarget,
-    #[error("release binary size is outside the accepted range")]
+    #[error("发布二进制大小超出允许范围")]
     InvalidSize,
-    #[error("release digest is invalid")]
+    #[error("发布摘要无效")]
     InvalidDigest,
-    #[error("release commit is invalid")]
+    #[error("发布提交无效")]
     InvalidCommit,
-    #[error("release publication time is invalid")]
+    #[error("发布时间无效")]
     InvalidPublishedAt,
-    #[error("release URL is not an allowed immutable GitHub URL")]
+    #[error("发布 URL 不是允许的不可变 GitHub URL")]
     InvalidUrl,
 }
 

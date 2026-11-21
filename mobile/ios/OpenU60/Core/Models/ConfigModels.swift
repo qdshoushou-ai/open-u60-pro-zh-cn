@@ -10,8 +10,8 @@ enum PayloadType: UInt8 {
         switch self {
         case .ecb: return "AES-128-ECB"
         case .cbc: return "AES-256-CBC"
-        case .plain: return "Unencrypted"
-        case .cbcNew: return "AES-256-CBC (New)"
+        case .plain: return "未加密"
+        case .cbcNew: return "AES-256-CBC（新）"
         }
     }
 }
@@ -43,8 +43,8 @@ enum ConfigConstants {
     static let cbcIVSize = 16
 
     static let knownKeys: [KnownKey] = [
-        KnownKey(description: "ZTE default (MIIBIjANB...)", keyBytes: Data("MIIBIjANBgkqhk".utf8)),
-        KnownKey(description: "ZTE default 2", keyBytes: Data("Wj".utf8)),
+        KnownKey(description: "ZTE 默认（MIIBIjANB…）", keyBytes: Data("MIIBIjANBgkqhk".utf8)),
+        KnownKey(description: "ZTE 默认 2", keyBytes: Data("Wj".utf8)),
         KnownKey(description: "ZTE ZXHN H298N", keyBytes: Data("ZTE%FN$GponNJ025".utf8)),
         KnownKey(description: "ZTE ZXHN H108N V2.5", keyBytes: Data("GrWM2ans*f@7SSc&".utf8)),
         KnownKey(description: "ZTE ZXHN H168N V3.5", keyBytes: Data([0x47, 0x72, 0x57, 0x4d, 0x33, 0x6d, 0x6e, 0x2f, 0x00, 0x59, 0x3e, 0x2a, 0x66, 0x32, 0x67, 0x55])),
@@ -54,8 +54,8 @@ enum ConfigConstants {
         KnownKey(description: "ZTE ZXHN F609", keyBytes: Data("'MMI@FP*Jhg&^%$$".utf8)),
         KnownKey(description: "ZTE ZXHN F660", keyBytes: Data("ZTE%FN$GponNJ025".utf8)),
         KnownKey(description: "ZTE ZXHN H267A", keyBytes: Data("GrWM2ans*f@7SSc&".utf8)),
-        KnownKey(description: "ZTE generic key 1", keyBytes: Data("402c38de39bed665".utf8)),
-        KnownKey(description: "ZTE generic key 2", keyBytes: Data("8cc72b05705d5c46".utf8)),
-        KnownKey(description: "ZTE generic key 3", keyBytes: Data("SMGPOINTzteGpon!".utf8)),
+        KnownKey(description: "ZTE 通用密钥 1", keyBytes: Data("402c38de39bed665".utf8)),
+        KnownKey(description: "ZTE 通用密钥 2", keyBytes: Data("8cc72b05705d5c46".utf8)),
+        KnownKey(description: "ZTE 通用密钥 3", keyBytes: Data("SMGPOINTzteGpon!".utf8)),
     ]
 }

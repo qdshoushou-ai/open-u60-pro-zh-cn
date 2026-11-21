@@ -249,7 +249,7 @@ async fn host_allowlist_and_redirects() {
         .body(Body::empty())
         .unwrap();
     let r = send(&c, evil).await;
-    assert_eq!((r.status, r.text().as_str()), (403, "Host not allowed"));
+    assert_eq!((r.status, r.text().as_str()), (403, "不允许的主机"));
     r.assert_security_headers();
     let none = axum::http::Request::builder().uri("/ui/").extension(peer(1, 2)).body(Body::empty()).unwrap();
     let r = send(&c, none).await;
@@ -260,18 +260,18 @@ async fn host_allowlist_and_redirects() {
         axum::http::Request::builder().uri("/ui/login").header("host", "localhost:9090").extension(p).body(Body::empty()).unwrap()
     };
     let r = send(&c, local(peer(1, 8))).await;
-    assert_eq!((r.status, r.text().as_str()), (403, "Host not allowed"));
+    assert_eq!((r.status, r.text().as_str()), (403, "不允许的主机"));
     send(&c, local(Peer(SocketAddr::from(([127, 0, 0, 1], 40002))))).await.assert_secure_html(200);
     get(&c, "/ui/login", peer(1, 3)).await.assert_secure_html(200);
     get(&c, "/", peer(1, 4)).await.assert_see_other("/ui/");
     get(&c, "/ui", peer(1, 5)).await.assert_see_other("/ui/");
     // Other methods on `/` stay the API's.
     let r = send(&c, req("POST", "/", peer(1, 6)).body(Body::empty()).unwrap()).await;
-    assert_eq!((r.status, r.text().as_str()), (401, r#"{"error":"unauthorized","ok":false}"#));
+    assert_eq!((r.status, r.text().as_str()), (401, r#"{"error":"未授权","ok":false}"#));
     assert_eq!(r.header("content-type"), Some("application/json"));
     let open = ctx(None);
     let r = send(&open, req("POST", "/", peer(1, 7)).body(Body::empty()).unwrap()).await;
-    assert_eq!((r.status, r.text().as_str()), (404, r#"{"error":"not found","ok":false}"#));
+    assert_eq!((r.status, r.text().as_str()), (404, r#"{"error":"未找到","ok":false}"#));
 }
 
 #[tokio::test]
@@ -1279,9 +1279,9 @@ async fn router_posts_check_session_csrf_confirm_and_values() {
 #[tokio::test]
 async fn operations_start_unless_the_write_surely_failed() {
     use super::action::unsure;
-    assert!(unsure(500, "AT+CFUN=1 failed"));
+    assert!(unsure(500, "AT+CFUN=1 失败"));
     assert!(unsure(503, "ubus call zwrt_data set_wwaniface failed: Command failed: Request timed out"));
-    assert!(!unsure(503, "Mobile data state unavailable") && !unsure(503, "no serial port found"));
+    assert!(!unsure(503, "Mobile data state unavailable") && !unsure(503, "未找到串口"));
     // Turning airplane mode off on the host: no AT port, which surely did
     // not change anything: the page with the error, no operation.
     let (c, cookie, _) = signed_in(28).await;

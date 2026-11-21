@@ -6,7 +6,7 @@ sample.month.rx_bytes=95e9;model=M.parse(sample);assert.equal(model.state,'excee
 sample.limit.enabled=false;model=M.parse(sample);assert.equal(model.state,'disabled');sample.limit.enabled=true;
 sample.limit.available=false;model=M.parse(sample);assert.equal(model.state,'unavailable');sample.limit.available=true;
 sample.limit.exceeded=true;sample.month.rx_bytes=1;model=M.parse(sample);assert.equal(model.state,'exceeded','firmware overflow state wins');
-assert.equal(M.bytes(115964116992),'115.96 GB');assert.equal(M.bytes(0),'0 B');assert.equal(M.bytes(null),'Not reported');
-assert.equal(M.duration(90061),'1d 1h 1m');assert.equal(M.ordinal(1),'1st');assert.equal(M.ordinal(12),'12th');assert.equal(M.ordinal(23),'23rd');
+assert.equal(M.bytes(115964116992),'115.96 GB');assert.equal(M.bytes(0),'0 B');assert.equal(M.bytes(null),'未上报');
+assert.equal(M.duration(90061),'1d 1h 1m');assert.equal(M.ordinal(1),'1日');assert.equal(M.ordinal(12),'12日');assert.equal(M.ordinal(23),'23日');
 assert.equal(M.gigabytes(115964116992),'115.964');assert.equal(M.bytesFromGigabytes('100'),100e9);assert.equal(M.bytesFromGigabytes('0.001'),1e6);assert.equal(M.bytesFromGigabytes('1.1234'),null);assert.equal(M.bytesFromGigabytes('0'),null);
 console.log('Passed: data periods, decimal units, cap conversion, billing labels and normal/warning/exceeded/disabled states.');

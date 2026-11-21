@@ -18,19 +18,19 @@ struct ProcessListSheet: View {
         NavigationStack {
             Group {
                 if isLoading && processes.isEmpty {
-                    ProgressView("Loading processes...")
+                    ProgressView("正在加载进程…")
                 } else {
                     List {
                         if bloatCount > 0 {
                             Section {
                                 HStack {
-                                    Label("Bloat Daemons", systemImage: "exclamationmark.triangle")
+                                    Label("预装守护进程", systemImage: "exclamationmark.triangle")
                                         .foregroundStyle(.orange)
                                     Spacer()
                                     VStack(alignment: .trailing) {
-                                        Text("\(bloatCount) processes")
+                                        Text("\(bloatCount) 个进程")
                                             .font(.caption)
-                                        Text(String(format: "%.1f%% CPU, %@ RSS", bloatCpuPct, formatKB(bloatRssKb)))
+                                        Text(String(format: "%.1f%% CPU，%@ RSS", bloatCpuPct, formatKB(bloatRssKb)))
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                     }
@@ -54,7 +54,7 @@ struct ProcessListSheet: View {
                             }
                         }
 
-                        Section(header: Text("Top Processes")) {
+                        Section(header: Text("进程排行")) {
                             ForEach(processes) { proc in
                                 processRow(proc)
                                     .swipeActions(edge: .trailing) {
@@ -62,7 +62,7 @@ struct ProcessListSheet: View {
                                             Button(role: .destructive) {
                                                 Task { await killSingle(proc.pid) }
                                             } label: {
-                                                Label("Kill", systemImage: "xmark.circle")
+                                                Label("结束", systemImage: "xmark.circle")
                                             }
                                         }
                                     }
@@ -71,27 +71,27 @@ struct ProcessListSheet: View {
                     }
                 }
             }
-            .navigationTitle("Processes")
+            .navigationTitle("进程")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("完成") { dismiss() }
                 }
                 if bloatCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Kill All Bloat", role: .destructive) {
+                        Button("结束全部预装进程", role: .destructive) {
                             showKillAllConfirm = true
                         }
                         .foregroundStyle(.red)
                     }
                 }
             }
-            .confirmationDialog("Kill all bloat daemons?", isPresented: $showKillAllConfirm, titleVisibility: .visible) {
-                Button("Kill All Bloat", role: .destructive) {
+            .confirmationDialog("结束全部预装守护进程？", isPresented: $showKillAllConfirm, titleVisibility: .visible) {
+                Button("结束全部预装进程", role: .destructive) {
                     Task { await killAll() }
                 }
             } message: {
-                Text("This will SIGKILL \(bloatCount) bloat daemons. They will return on reboot.")
+                Text("这将强制结束 \(bloatCount) 个预装守护进程，重启后它们会恢复。")
             }
             .task {
                 while !Task.isCancelled {
@@ -150,7 +150,7 @@ struct ProcessListSheet: View {
             let body = ["pids": [pid]] as [String: Any]
             let data = try await client.postJSON("/api/system/kill-bloat", body: body)
             let freed = data["freed_rss_kb"] as? Int ?? 0
-            banner = "Killed PID \(pid), freed \(formatKB(freed))"
+            banner = "已结束 PID \(pid)，释放 \(formatKB(freed))"
             await refresh()
             await refreshHost?()
         } catch {
@@ -163,7 +163,7 @@ struct ProcessListSheet: View {
             let data = try await client.postJSON("/api/system/kill-bloat", body: ["all": true])
             let freed = data["freed_rss_kb"] as? Int ?? 0
             let killedArr = data["killed"] as? [[String: Any]] ?? []
-            banner = "Killed \(killedArr.count) daemons, freed \(formatKB(freed))"
+            banner = "已结束 \(killedArr.count) 个守护进程，释放 \(formatKB(freed))"
             await refresh()
             await refreshHost?()
         } catch {

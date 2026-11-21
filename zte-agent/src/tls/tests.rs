@@ -222,7 +222,7 @@ fn a_public_lan_address_is_left_out() {
     let t = w.tls();
     t.turn_on().unwrap();
     assert!(server_cert(&w).ips.is_empty());
-    assert!(t.status().error.unwrap().contains("100.64.0.1 is not a private address"));
+    assert!(t.status().error.unwrap().contains("100.64.0.1 不是私有地址"));
     assert_eq!(w.hosts_file().as_deref(), Some("100.64.0.1 u60.home.arpa\n"));
     assert_eq!(t.status().urls(), ["https://u60.home.arpa:0/console/"]);
     assert_eq!(t.status().covers, ["u60.home.arpa"]);
@@ -278,7 +278,7 @@ fn start_repairs_or_reports_its_files() {
     t.start();
     assert!(!t.is_on() && t.status().kept.is_none());
     let e = t.status().error.unwrap();
-    assert!(e.contains("The saved certificate authority is unusable") && e.contains("Turn On HTTPS makes a new certificate authority"), "{e}");
+    assert!(e.contains("已保存的证书颁发机构不可用") && e.contains("开启 HTTPS 会创建新的证书颁发机构"), "{e}");
     t.reset().unwrap();
     assert!(!w.dir().exists());
 }
@@ -420,7 +420,7 @@ fn a_new_lan_address_keeps_the_name_working() {
     let st = t.status();
     assert_eq!(st.urls(), ["https://u60.home.arpa:0/console/"]);
     let e = st.error.unwrap();
-    assert!(e.contains("now 192.168.8.1, but its certificate authority was made for 192.168.0.1") && e.contains("Reset HTTPS"), "{e}");
+    assert!(e.contains("现已更改为 192.168.8.1，但其证书颁发机构是为 192.168.0.1 创建的") && e.contains("重置 HTTPS"), "{e}");
     let ca = t.ca_der().unwrap();
     let chain = [std::fs::read(w.dir().join(SERVER_CRT)).unwrap(), std::fs::read(w.dir().join(ISSUING_CRT)).unwrap()];
     verify(&ca, &[&chain[0], &chain[1]], "u60.home.arpa", NOW).unwrap();
@@ -442,7 +442,7 @@ fn a_new_lan_address_keeps_the_name_working() {
     assert_eq!((t.status().error, w.hosts_file().as_deref()), (None, Some("192.168.0.1 u60.home.arpa\n")));
     // A public address and back: the line comes and goes.
     t.lan_changed(Ipv4Addr::new(100, 64, 0, 1));
-    assert!(t.status().error.unwrap().contains("100.64.0.1 is not a private address"));
+    assert!(t.status().error.unwrap().contains("100.64.0.1 不是私有地址"));
     t.lan_changed(Ipv4Addr::new(192, 168, 0, 1));
     assert_eq!(t.status().error, None);
     // At start too.
@@ -514,7 +514,7 @@ fn status_json_for_the_apps() {
     // A certificate problem stays when the listener starts.
     t.lan_changed(Ipv4Addr::new(100, 64, 0, 1));
     t.set_listening(Ok("0.0.0.0:9443".parse().unwrap()));
-    assert!(t.status().error.unwrap().contains("100.64.0.1 is not a private address"));
+    assert!(t.status().error.unwrap().contains("100.64.0.1 不是私有地址"));
 }
 
 /// The profile: one root payload holding the CA, ids from the CA (the same

@@ -57,14 +57,14 @@ impl TsConfig {
         if let Some(v) = patch.hostname {
             let v = v.trim().to_string();
             if v.is_empty() || v.len() > 63 || !v.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
-                return Err("hostname must be 1-63 chars, alphanumeric or '-'".into());
+                return Err("hostname 必须为 1-63 个字符，只能包含字母、数字或“-”".into());
             }
             self.hostname = v;
         }
         if let Some(v) = patch.advertise_routes {
             for route in &v {
                 if !valid_cidr(route) {
-                    return Err(format!("invalid CIDR route: {route}"));
+                    return Err(format!("无效的 CIDR 路由：{route}"));
                 }
             }
             self.advertise_routes = v;
@@ -101,5 +101,5 @@ pub fn load() -> TsConfig {
 
 pub fn save(config: &TsConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config).map_err(|e| format!("serialize: {e}"))?;
-    std::fs::write(CONFIG_PATH, json).map_err(|e| format!("write {CONFIG_PATH}: {e}"))
+    std::fs::write(CONFIG_PATH, json).map_err(|e| format!("写入 {CONFIG_PATH} 失败：{e}"))
 }

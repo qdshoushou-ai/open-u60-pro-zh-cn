@@ -52,7 +52,7 @@ struct SignalMonitorView<ConnectionDetails: View>: View {
             .padding(.vertical, 10)
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Connection & signal")
+        .navigationTitle("连接与信号")
         .refreshable { await viewModel.refresh() }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -84,7 +84,7 @@ private struct DataSessionPanel: View, Equatable {
     var body: some View {
         CardView(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Data Session")
+                Text("数据会话")
                     .font(.headline)
 
                 if let qci = bearer.qci {
@@ -93,10 +93,10 @@ private struct DataSessionPanel: View, Equatable {
                 if let ambrText = bearer.ambrText {
                     MetaRow(label: "AMBR", value: ambrText)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Rate cap")
+                        .accessibilityLabel("速率上限")
                         .accessibilityValue(ambrAccessibilityValue)
 
-                    Text("Down / up. Operator rate cap, set when the data session started. Not a speed test.")
+                    Text("下行/上行。运营商速率上限，在数据会话建立时设定，并非测速结果。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -107,12 +107,12 @@ private struct DataSessionPanel: View, Equatable {
 
     private var ambrAccessibilityValue: String {
         let down = bearer.ambrDownlinkMbps.map {
-            "\(BearerInfo.formatMbps($0)) megabits per second down"
-        } ?? "Down unavailable"
+            "\(BearerInfo.formatMbps($0)) Mbps 下行"
+        } ?? "下行不可用"
         let up = bearer.ambrUplinkMbps.map {
-            "\(BearerInfo.formatMbps($0)) megabits per second up"
-        } ?? "Up unavailable"
-        return "\(down), \(up)"
+            "\(BearerInfo.formatMbps($0)) Mbps 上行"
+        } ?? "上行不可用"
+        return "\(down)，\(up)"
     }
 }
 
@@ -126,11 +126,11 @@ private struct SignalHistoryChart: View {
     var body: some View {
         CardView(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Signal History")
+                Text("信号历史")
                     .font(.headline)
 
                 if history.isEmpty {
-                    Text("Collecting data...")
+                    Text("正在采集数据…")
                         .foregroundStyle(.secondary)
                         .frame(height: 110)
                         .frame(maxWidth: .infinity)
@@ -146,26 +146,26 @@ private struct SignalHistoryChart: View {
             ForEach(history) { point in
                 if let nrRSRP = point.nrRSRP {
                     LineMark(
-                        x: .value("Time", point.timestamp),
+                        x: .value("时间", point.timestamp),
                         y: .value("dBm", nrRSRP)
                     )
-                    .foregroundStyle(by: .value("Type", "NR"))
+                    .foregroundStyle(by: .value("类型", "NR"))
                     .interpolationMethod(.catmullRom)
                 }
                 if showLTE, let lteRSRP = point.lteRSRP {
                     LineMark(
-                        x: .value("Time", point.timestamp),
+                        x: .value("时间", point.timestamp),
                         y: .value("dBm", lteRSRP)
                     )
-                    .foregroundStyle(by: .value("Type", "LTE"))
+                    .foregroundStyle(by: .value("类型", "LTE"))
                     .interpolationMethod(.catmullRom)
                 }
                 if show3G, let wcdmaRSCP = point.wcdmaRSCP {
                     LineMark(
-                        x: .value("Time", point.timestamp),
+                        x: .value("时间", point.timestamp),
                         y: .value("dBm", wcdmaRSCP)
                     )
-                    .foregroundStyle(by: .value("Type", "3G"))
+                    .foregroundStyle(by: .value("类型", "3G"))
                     .interpolationMethod(.catmullRom)
                 }
             }
@@ -193,7 +193,7 @@ private struct SignalHistoryChart: View {
             }
         }
         .frame(height: 160)
-        .accessibilityLabel("Signal strength history")
+        .accessibilityLabel("信号强度历史")
     }
 }
 
@@ -241,7 +241,7 @@ private struct CellularPanelData: Equatable {
             band: signal.band,
             pci: signal.pci,
             cellID: signal.cellID,
-            channelLabel: "Channel",
+            channelLabel: "信道",
             channel: signal.channel,
             bandwidth: signal.bandwidth,
             caActive: !signal.sccCarriers.isEmpty,
@@ -307,7 +307,7 @@ private struct CellularPanel: View, Equatable {
             Label(data.title, systemImage: data.systemImage)
                 .font(.headline)
             if data.showsNSAAnchor {
-                badge("NSA Anchor")
+                badge("NSA 锚点")
             }
             if data.caActive {
                 badge("\(data.numCC) CC")
@@ -317,10 +317,10 @@ private struct CellularPanel: View, Equatable {
                 Text(Color.rsrpQuality(data.rsrp))
                     .font(.caption.bold())
                     .foregroundStyle(Color.rsrpColor(data.rsrp))
-                    .accessibilityLabel("Signal quality")
+                    .accessibilityLabel("信号质量")
                     .accessibilityValue(Color.rsrpQuality(data.rsrp))
             } else {
-                Text("Disconnected")
+                Text("已断开")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -342,14 +342,14 @@ private struct CellularPanel: View, Equatable {
 
     private var metadata: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MetaRow(label: "Band", value: SignalFormat.band(data.band, technology: data.technology, isPCC: data.caActive))
+            MetaRow(label: "频段", value: SignalFormat.band(data.band, technology: data.technology, isPCC: data.caActive))
             MetaRow(label: "PCI", value: data.pci)
-            MetaRow(label: "Cell ID", value: data.cellID)
+            MetaRow(label: "小区 ID", value: data.cellID)
             MetaRow(label: data.channelLabel, value: data.channel)
-            MetaRow(label: "Bandwidth", value: SignalFormat.bandwidth(data.bandwidth, band: data.band, technology: data.technology))
-            MetaRow(label: "CA", value: data.caActive ? "Active (\(data.numCC) CC)" : "Inactive")
+            MetaRow(label: "带宽", value: SignalFormat.bandwidth(data.bandwidth, band: data.band, technology: data.technology))
+            MetaRow(label: "CA", value: data.caActive ? "活动（\(data.numCC) CC）" : "未活动")
             if data.showsTotalBandwidth, data.caActive, let total = totalBandwidth {
-                MetaRow(label: "Total BW", value: "\(total) MHz")
+                MetaRow(label: "总带宽", value: "\(total) MHz")
             }
         }
     }
@@ -379,7 +379,7 @@ private struct SCCCarrierView: View {
                     .font(.caption2.monospacedDigit())
                 Text("PCI \(carrier.pci)")
                     .font(.caption2.monospacedDigit())
-                Text("BW \(carrier.bandwidth)")
+                Text("带宽 \(carrier.bandwidth)")
                     .font(.caption2.monospacedDigit())
             }
             .foregroundStyle(.secondary)
@@ -405,7 +405,7 @@ private struct WCDMAPanel: View {
                         Text(Color.rscpQuality(signal.rscp))
                             .font(.caption.bold())
                             .foregroundStyle(Color.rscpColor(signal.rscp))
-                            .accessibilityLabel("Signal quality")
+                            .accessibilityLabel("信号质量")
                             .accessibilityValue(Color.rscpQuality(signal.rscp))
                     }
                 }
@@ -462,7 +462,7 @@ enum SignalFormat {
     static func bandwidth(_ bandwidth: String, band: String, technology: BandTechnology) -> String {
         if let value = bandwidthMHz(bandwidth), let number = bandNumber(band),
            let spec = technology.spec(for: number) {
-            return "\(value) / \(spec.maxBandwidthMHz) MHz max"
+            return "\(value) / \(spec.maxBandwidthMHz) MHz 最大"
         }
         return bandwidth.isEmpty ? "--" : bandwidth
     }
@@ -551,6 +551,6 @@ struct SignalMetricView: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
-        .accessibilityValue(value.map { "\(Int($0)) \(unit)" } ?? "Unavailable")
+        .accessibilityValue(value.map { "\(Int($0)) \(unit)" } ?? "不可用")
     }
 }

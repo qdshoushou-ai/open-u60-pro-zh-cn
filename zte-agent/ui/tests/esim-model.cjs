@@ -9,13 +9,13 @@ assert.throws(()=>E.activation('LPA:1$operator.example$ID$$1'));assert.equal(E.a
 assert.throws(()=>E.activation('https://operator.example/code'));assert.throws(()=>E.activation('LPA:1$operator.example/path$ID'));assert.throws(()=>E.activation('LPA:1$operator.example$ID with spaces'));
 assert.equal(E.older({agent_instance:1,generation:2,observed_seq:5,observed_at:200},{agent_instance:1,generation:2,observed_seq:6,observed_at:100}),true,'sequence wins over a jumping wall clock');
 assert.equal(E.older({agent_instance:2,generation:0},{agent_instance:1,generation:9}),false,'a restarted agent begins a new sequence');
-assert.equal(E.switchBusy({state:'reloading'}),true);assert.equal(E.switchBusy({state:'connected'}),false);assert.match(E.switchMessage({state:'no_data',reason:'roaming_off'}),/Roaming is off/);
+assert.equal(E.switchBusy({state:'reloading'}),true);assert.equal(E.switchBusy({state:'connected'}),false);assert.match(E.switchMessage({state:'no_data',reason:'roaming_off'}),/漫游已关闭/);
 assert.deepEqual(E.warnings({switch_warnings:['manual_apn','roaming_off']},{manual_apn:{apn:'internet'}}).length,2);
 const wan={up:true,'ipv4-address':[{address:'10.0.0.2'},{address:'10.0.0.2'},{address:'0.0.0.0'}],'ipv6-address':[{address:'2001:db8::1'}]},wan6={'ipv6-address':[{address:'::'},{address:'2001:db8::1'},{address:'2001:db8::2'}],'ipv6-prefix':[{address:'2001:db8:1::'}]};
 assert.deepEqual(A.collect(wan,wan6),{ipv4:['10.0.0.2'],ipv6:['2001:db8::1','2001:db8::2']});
 assert.deepEqual(A.collect(null,{'ipv6-prefix':[{address:'2001:db8::'}]}),{ipv4:[],ipv6:[]},'delegated prefixes are not interface addresses');
 assert.deepEqual(A.collect(null,wan6).ipv4,[]);assert.deepEqual(A.collect(null,null),{ipv4:[],ipv6:[]});
-assert.match(E.switchMessage({state:'modem_confirmed',network_check:'recovering'}),/Restoring the ZTE/);
-assert.match(E.switchMessage({state:'no_data',reason:'network_unavailable'}),/could not be confirmed/);
+assert.match(E.switchMessage({state:'modem_confirmed',network_check:'recovering'}),/正在恢复 ZTE/);
+assert.match(E.switchMessage({state:'no_data',reason:'network_unavailable'}),/无法确认互联网连接/);
 assert.equal(E.warnings({switch_warnings:['data_off']},{}).length,1);
 console.log('Passed: eSIM identifiers, validation, clock-independent ordering, switch warnings, dual-stack WAN address collection, deduplication and delegated-prefix separation.');

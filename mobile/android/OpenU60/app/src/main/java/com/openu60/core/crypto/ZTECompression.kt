@@ -24,7 +24,7 @@ object ZTECompression {
             }
         }
 
-        throw ZTEConfigCryptoException("Failed to decompress data: not valid ZLIB or chunked ZLIB format")
+        throw ZTEConfigCryptoException("解压数据失败：不是有效的 ZLIB 或分块 ZLIB 格式")
     }
 
     fun compress(data: ByteArray, chunked: Boolean = false, chunkSize: Int = 65536): ByteArray {
@@ -109,12 +109,12 @@ object ZTECompression {
                 offset += 4
                 if (chunkLen == 0) break
                 if (chunkLen < 0 || chunkLen > data.size - offset) {
-                    throw Exception("Invalid chunk length")
+                    throw Exception("分块长度无效")
                 }
                 val chunk = data.copyOfRange(offset, offset + chunkLen)
                 offset += chunkLen
                 val decompressed = tryPlainZlib(chunk) ?: tryRawDeflate(chunk)
-                    ?: throw Exception("Failed to decompress chunk")
+                    ?: throw Exception("解压分块失败")
                 result.write(decompressed)
                 chunksFound++
             }

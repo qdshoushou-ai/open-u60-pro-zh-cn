@@ -239,15 +239,15 @@ pub fn scope(info: &Info) -> Option<Scope> {
 
 fn serial(rng: &SystemRandom) -> Result<Vec<u8>, Error> {
     let mut s = [0u8; 16];
-    rng.fill(&mut s).map_err(|_| "no randomness")?;
+    rng.fill(&mut s).map_err(|_| "没有可用的随机源")?;
     // Positive and exactly 16 bytes long.
     s[0] = (s[0] & 0x7f) | 0x40;
     Ok(uint(&s))
 }
 
 fn new_key(rng: &SystemRandom) -> Result<(Vec<u8>, EcdsaKeyPair), Error> {
-    let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, rng).map_err(|_| "key generation failed")?;
-    let pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8.as_ref(), rng).map_err(|_| "bad key")?;
+    let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, rng).map_err(|_| "密钥生成失败")?;
+    let pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8.as_ref(), rng).map_err(|_| "无效的密钥")?;
     Ok((pkcs8.as_ref().to_vec(), pair))
 }
 
@@ -269,7 +269,7 @@ enum SignWith<'a> {
 
 fn signed(signer: SignWith, tbs: Vec<u8>) -> Result<Vec<u8>, Error> {
     let sig = match signer {
-        SignWith::Ring(pair, rng) => pair.sign(rng, &tbs).map_err(|_| "signing failed")?.as_ref().to_vec(),
+        SignWith::Ring(pair, rng) => pair.sign(rng, &tbs).map_err(|_| "签名失败")?.as_ref().to_vec(),
         SignWith::P256(key) => {
             let sig: p256::ecdsa::DerSignature = key.sign(&tbs);
             sig.as_bytes().to_vec()
@@ -327,10 +327,10 @@ pub fn authority(root: &CaSpec, issuing: &CaSpec) -> Result<(Vec<u8>, KeyCert), 
 /// A new server key and its certificate, signed by `ca` (the issuing CA).
 pub fn leaf(ca: &KeyCert, spec: &LeafSpec) -> Result<KeyCert, Error> {
     let rng = SystemRandom::new();
-    let ca_info = parse(&ca.cert).ok_or("unreadable CA certificate")?;
-    let ca_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &ca.key, &rng).map_err(|_| "unreadable CA key")?;
+    let ca_info = parse(&ca.cert).ok_or("无法读取 CA 证书")?;
+    let ca_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &ca.key, &rng).map_err(|_| "无法读取 CA 密钥")?;
     if ca_pair.public_key().as_ref() != ca_info.point.as_slice() {
-        return Err("CA key does not match its certificate");
+        return Err("CA 密钥与其证书不匹配");
     }
     let (key, pair) = new_key(&rng)?;
     let point = pair.public_key().as_ref();
@@ -820,7 +820,7 @@ pub mod tests {
         let (a, b) = (test_authority(), test_authority());
         let mixed = KeyCert { key: b.issuing.key.clone(), cert: a.issuing.cert.clone() };
         let spec = LeafSpec { dns: &["u60.home.arpa"], ips: &[], not_before: NOW, not_after: NOW + DAY };
-        assert_eq!(leaf(&mixed, &spec).err(), Some("CA key does not match its certificate"));
+        assert_eq!(leaf(&mixed, &spec).err(), Some("CA 密钥与其证书不匹配"));
         assert!(parse(b"\x30\x03\x02\x01\x00").is_none());
         assert!(key_point(b"junk").is_none());
     }

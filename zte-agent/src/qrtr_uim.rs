@@ -130,9 +130,9 @@ fn tlv<'a>(tlvs: &[(u8, &'a [u8])], t: u8) -> Option<&'a [u8]> {
 
 /// The Result TLV (0x02): Ok, or the QMI error.
 pub(crate) fn check_result(tlvs: &[(u8, &[u8])]) -> Result<(), String> {
-    let r = tlv(tlvs, 0x02).ok_or("QMI response without a result")?;
+    let r = tlv(tlvs, 0x02).ok_or("QMI 响应没有结果")?;
     if r.len() < 4 {
-        return Err("short QMI result".into());
+        return Err("QMI 结果过短".into());
     }
     let status = u16::from_le_bytes([r[0], r[1]]);
     let error = u16::from_le_bytes([r[2], r[3]]);
@@ -161,7 +161,7 @@ fn send_to(fd: &OwnedFd, node: u32, port: u32, buf: &[u8]) -> Result<(), String>
         )
     };
     if n < 0 {
-        return Err(os_err("QRTR send"));
+        return Err(os_err("QRTR 发送"));
     }
     Ok(())
 }
@@ -174,10 +174,10 @@ fn recv_from(fd: &OwnedFd, buf: &mut [u8], deadline: Instant) -> Result<(usize, 
     // SAFETY: one valid pollfd.
     let ready = unsafe { libc::poll(&mut pfd, 1, ms) };
     if ready < 0 {
-        return Err(os_err("QRTR poll"));
+        return Err(os_err("QRTR 轮询"));
     }
     if ready == 0 {
-        return Err("modem did not answer in time".into());
+        return Err("调制解调器未及时应答".into());
     }
     // SAFETY: zeroed sockaddr_qrtr is a valid value for the kernel to fill.
     let mut addr: SockaddrQrtr = unsafe { std::mem::zeroed() };
@@ -194,7 +194,7 @@ fn recv_from(fd: &OwnedFd, buf: &mut [u8], deadline: Instant) -> Result<(usize, 
         )
     };
     if n < 0 {
-        return Err(os_err("QRTR receive"));
+        return Err(os_err("QRTR 接收"));
     }
     Ok((n as usize, addr.sq_node, addr.sq_port))
 }
@@ -210,7 +210,7 @@ impl UimClient {
         // SAFETY: plain socket call; the fd is owned immediately.
         let raw = unsafe { libc::socket(AF_QIPCRTR, SOCK_FLAGS, 0) };
         if raw < 0 {
-            return Err(os_err("QRTR socket"));
+            return Err(os_err("QRTR 套接字"));
         }
         // SAFETY: `raw` is a fresh, valid descriptor.
         let fd = unsafe { OwnedFd::from_raw_fd(raw) };
@@ -242,7 +242,7 @@ impl UimClient {
                 port = Some(s_port);
             }
         }
-        let port = port.ok_or_else(|| format!("QRTR node {node} has no UIM service"))?;
+        let port = port.ok_or_else(|| format!("QRTR 节点 {node} 没有 UIM 服务"))?;
         Ok(UimClient { fd, node, port, slot, txn: 0, timeout, deadline, channel: None, channel_unknown: false })
     }
 
@@ -262,7 +262,7 @@ impl UimClient {
             let data = &buf[..n];
             if port == QRTR_PORT_CTRL {
                 if n >= 20 && le32(data, 0) == QRTR_TYPE_DEL_SERVER && le32(data, 12) == self.node && le32(data, 16) == self.port {
-                    return Err("UIM service went away".into());
+                    return Err("UIM 服务已消失".into());
                 }
                 continue;
             }
@@ -286,7 +286,7 @@ fn field(tlvs: &[(u8, Vec<u8>)], t: u8) -> Option<&[u8]> {
 impl euicc::Apdu for UimClient {
     fn open_channel(&mut self, aid: &[u8]) -> euicc::Result<u8> {
         if self.channel.is_some() || self.channel_unknown || aid.is_empty() || aid.len() > 255 {
-            return Err(euicc::Error::Transport("open logical channel refused: channel state".into()));
+            return Err(euicc::Error::Transport("打开逻辑通道被拒绝：通道状态".into()));
         }
         let mut aid_tlv = vec![aid.len() as u8];
         aid_tlv.extend_from_slice(aid);
@@ -295,14 +295,14 @@ impl euicc::Apdu for UimClient {
             .request(UIM_OPEN_LOGICAL_CHANNEL, &[(0x01, &slot), (0x10, &aid_tlv)])
             .map_err(|e| {
                 self.channel_unknown = !e.starts_with("QMI error");
-                euicc::Error::Transport(format!("open logical channel failed: {e}"))
+                euicc::Error::Transport(format!("打开逻辑通道失败：{e}"))
             })?;
         match field(&out, 0x10).and_then(|v| v.first().copied()) {
             Some(ch) if ch != 0 => {
                 self.channel = Some(ch);
                 Ok(ch)
             }
-            _ => Err(euicc::Error::Transport("open logical channel failed: no channel id".into())),
+            _ => Err(euicc::Error::Transport("打开逻辑通道失败：没有通道 ID".into())),
         }
     }
 
@@ -323,24 +323,24 @@ impl euicc::Apdu for UimClient {
     }
 
     fn transmit(&mut self, apdu: &[u8]) -> euicc::Result<Vec<u8>> {
-        let channel = self.channel.ok_or(euicc::Error::Transport("APDU without an open channel".into()))?;
+        let channel = self.channel.ok_or(euicc::Error::Transport("未打开逻辑通道即发送 APDU".into()))?;
         if apdu.len() > u16::MAX as usize {
-            return Err(euicc::Error::Transport("APDU too long".into()));
+            return Err(euicc::Error::Transport("APDU 过长".into()));
         }
         let mut apdu_tlv = (apdu.len() as u16).to_le_bytes().to_vec();
         apdu_tlv.extend_from_slice(apdu);
         let slot = [self.slot];
         let out = self
             .request(UIM_SEND_APDU, &[(0x01, &slot), (0x02, &apdu_tlv), (0x10, &[channel])])
-            .map_err(|e| euicc::Error::Transport(format!("APDU failed: {e}")))?;
-        let resp = field(&out, 0x10).ok_or(euicc::Error::Transport("APDU failed: no response".into()))?;
+            .map_err(|e| euicc::Error::Transport(format!("APDU 失败：{e}")))?;
+        let resp = field(&out, 0x10).ok_or(euicc::Error::Transport("APDU 失败：无响应".into()))?;
         if resp.len() < 2 {
-            return Err(euicc::Error::Transport("APDU failed: short response".into()));
+            return Err(euicc::Error::Transport("APDU 失败：响应过短".into()));
         }
         let len = usize::from(u16::from_le_bytes([resp[0], resp[1]]));
         resp.get(2..2 + len)
             .map(<[u8]>::to_vec)
-            .ok_or(euicc::Error::Transport("APDU failed: truncated response".into()))
+            .ok_or(euicc::Error::Transport("APDU 失败：响应被截断".into()))
     }
 }
 

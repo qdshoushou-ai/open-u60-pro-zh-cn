@@ -468,7 +468,7 @@ fn log_fixture() -> Vec<Value> {
         })
     };
     vec![
-        entry(1_792_000_300, 12, 3, "+15555550123", false, true, Some("no WAN connectivity; held for retry")),
+        entry(1_792_000_300, 12, 3, "+15555550123", false, true, Some("无 WAN 连接；已保留等待重试")),
         entry(1_792_000_200, 11, 2, "EXAMPLE-BANK", false, false, Some("webhook: bad uri: example.com/hook/FAKE-PATH is missing scheme")),
         entry(1_792_000_100, 10, 1, "+15555550100", true, false, None),
         json!({"sms_id": 9, "sender": "+15555550199", "content": "FAKE-CONTENT"}),
@@ -506,7 +506,7 @@ async fn forward_log_in_both_tabs() {
             &format!("<a href=\"{tab}\" aria-current=\"page\">"),
             "<div class=\"l1\"><span class=\"nm\">+15555550123</span><span class=\"c-orange hl\"><svg",
             "</svg>Held, will retry</span></div>",
-            "<span class=\"rs\">no WAN connectivity; held for retry</span>",
+            "<span class=\"rs\">无 WAN 连接；已保留等待重试</span>",
             "<span class=\"nm\">EXAMPLE-BANK</span><span class=\"c-red\" role=\"img\" aria-label=\"Failed\"><svg",
             "<span class=\"rs er\">webhook: bad uri</span>",
             "<span class=\"nm\">+15555550100</span><span class=\"c-green\" role=\"img\" aria-label=\"Forwarded\"><svg",

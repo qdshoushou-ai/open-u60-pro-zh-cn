@@ -116,7 +116,7 @@ impl Knobs {
                 abs_lpm_online_max_times_cfg: b,
                 abs_restart_max_times_cfg: c,
             }),
-            _ => Err(format!("uci show {KNOB_UCI_SECTION}: knob(s) missing")),
+            _ => Err(format!("uci show {KNOB_UCI_SECTION}：缺少配置项")),
         }
     }
 }
@@ -159,13 +159,13 @@ impl Default for Config {
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
         if !(1..=240).contains(&self.grace_min) {
-            return Err("grace_min must be 1-240".into());
+            return Err("grace_min 必须为 1-240".into());
         }
         if !(1..=240).contains(&self.probe_every_min) {
-            return Err("probe_every_min must be 1-240".into());
+            return Err("probe_every_min 必须为 1-240".into());
         }
         if !(1..=30).contains(&self.probe_window_min) {
-            return Err("probe_window_min must be 1-30".into());
+            return Err("probe_window_min 必须为 1-30".into());
         }
         Ok(())
     }
@@ -192,16 +192,16 @@ impl Config {
     pub fn patched(&self, patch: &Value) -> Result<Config, String> {
         let mut next = self.clone();
         if let Some(v) = patch.get("enabled") {
-            next.enabled = v.as_bool().ok_or("enabled must be a boolean")?;
+            next.enabled = v.as_bool().ok_or("enabled 必须为布尔值")?;
         }
         if let Some(v) = patch.get("grace_min") {
-            next.grace_min = v.as_u64().ok_or("grace_min must be an integer")?;
+            next.grace_min = v.as_u64().ok_or("grace_min 必须为整数")?;
         }
         if let Some(v) = patch.get("probe_every_min") {
-            next.probe_every_min = v.as_u64().ok_or("probe_every_min must be an integer")?;
+            next.probe_every_min = v.as_u64().ok_or("probe_every_min 必须为整数")?;
         }
         if let Some(v) = patch.get("probe_window_min") {
-            next.probe_window_min = v.as_u64().ok_or("probe_window_min must be an integer")?;
+            next.probe_window_min = v.as_u64().ok_or("probe_window_min 必须为整数")?;
         }
         next.validate()?;
         Ok(next)
@@ -1028,7 +1028,7 @@ pub fn config_get(policy: &OosPolicy) -> (u16, Value) {
 pub fn config_set(policy: &OosPolicy, body: &[u8]) -> (u16, Value) {
     let patch: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match policy.update(&patch) {
         Ok(config) => (200, config_json(&config, policy.status())),
@@ -1441,7 +1441,7 @@ mod tests {
         }
         fn write_knobs(&self, knobs: &Knobs) -> Result<(), String> {
             if self.fail_write.load(Ordering::Relaxed) {
-                return Err("uci commit zte_nwinfo: read-only".into());
+                return Err("uci 提交 zte_nwinfo 失败：只读".into());
             }
             self.calls
                 .lock()

@@ -204,7 +204,7 @@ class DeviceControlViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 agentClient.postJSON("/api/device/reboot")
-                _state.value = _state.value.copy(isLoading = false, message = "Rebooting...", messageIsError = false)
+                _state.value = _state.value.copy(isLoading = false, message = "正在重启……", messageIsError = false)
             } catch (e: AgentError.Unauthorized) {
                 if (authManager.reauthenticate()) reboot() else setError(e.message)
             } catch (e: Exception) {
@@ -218,7 +218,7 @@ class DeviceControlViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 agentClient.postJSON("/api/device/factory-reset")
-                _state.value = _state.value.copy(isLoading = false, message = "Factory reset initiated...", messageIsError = false)
+                _state.value = _state.value.copy(isLoading = false, message = "已开始恢复出厂设置……", messageIsError = false)
             } catch (e: AgentError.Unauthorized) {
                 if (authManager.reauthenticate()) factoryReset() else setError(e.message)
             } catch (e: Exception) {
@@ -228,6 +228,6 @@ class DeviceControlViewModel @Inject constructor(
     }
 
     private fun setError(msg: String?) {
-        _state.value = _state.value.copy(isLoading = false, message = msg ?: "Unknown error", messageIsError = true)
+        _state.value = _state.value.copy(isLoading = false, message = msg ?: "未知错误", messageIsError = true)
     }
 }

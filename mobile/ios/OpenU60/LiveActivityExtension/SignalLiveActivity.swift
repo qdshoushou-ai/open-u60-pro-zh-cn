@@ -12,9 +12,9 @@ struct SignalLiveActivity: Widget {
         ActivityConfiguration(for: SignalActivityAttributes.self) { context in
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Label("U60 Pro · Modem signal", systemImage: "wifi.router.fill").font(.headline)
+                    Label("U60 Pro · 调制解调器信号", systemImage: "wifi.router.fill").font(.headline)
                     Spacer()
-                    if context.isStale { Text("Stale").foregroundStyle(.orange).font(.caption.bold()) }
+                    if context.isStale { Text("已过期").foregroundStyle(.orange).font(.caption.bold()) }
                 }
                 signalRow(context.state, stale: context.isStale)
             }
@@ -73,9 +73,9 @@ struct SignalLiveActivity: Widget {
         HStack(alignment: .center, spacing: 8) {
             Group {
                 if state.mode == .sa {
-                    quality("5G quality", sinr: state.nrSinr, stale: stale)
+                    quality("5G 质量", sinr: state.nrSinr, stale: stale)
                 } else if state.mode == .lte || state.mode == .lteCA {
-                    quality("LTE quality", sinr: state.lteSinr, stale: stale)
+                    quality("LTE 质量", sinr: state.lteSinr, stale: stale)
                 } else {
                     radio("LTE", bars: state.lteBars, rsrp: state.lteRsrp,
                           sinr: state.mode == .nsa ? state.lteSinr : nil,
@@ -88,7 +88,7 @@ struct SignalLiveActivity: Widget {
                 if state.mode.showsLTE, let count = state.lteCarrierCount, count > 1 {
                     Text("LTE CA").font(.system(size: 9))
                 }
-                Text(stale ? "Stale" : "Sample age")
+                Text(stale ? "已过期" : "采样时间")
                     .font(.system(size: 9))
                     .foregroundStyle(stale ? Color.orange : Color.secondary)
                 Text(Date(timeIntervalSince1970: Double(state.sampledAt)), style: .timer)
@@ -122,7 +122,7 @@ struct SignalLiveActivity: Widget {
                 Text("\(sinr, specifier: "%.0f") dB")
                     .font(.title3.bold()).monospacedDigit().contentTransition(.numericText())
             } else {
-                Text("Unavailable").font(.caption).foregroundStyle(.secondary)
+                Text("不可用").font(.caption).foregroundStyle(.secondary)
             }
             Text("SINR").font(.caption2).foregroundStyle(.secondary)
         }
@@ -141,13 +141,13 @@ struct SignalLiveActivity: Widget {
         }
         .foregroundStyle(stale ? Color.orange : (sinr == nil ? Color.secondary : Color.blue))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(sinr.map { "Active radio SINR \(Int($0)) decibels" } ?? "Active radio SINR unavailable")
+        .accessibilityLabel(sinr.map { "当前射频 SINR \(Int($0)) dB" } ?? "当前射频 SINR 不可用")
     }
 
     @ViewBuilder
     private func compactBars(_ bars: Int?, active: Bool, stale: Bool) -> some View {
         if active { SignalBarsView(bars: bars, stale: stale) }
-        else { Text("–").font(.caption).foregroundStyle(.secondary).accessibilityLabel("Not reported active") }
+        else { Text("–").font(.caption).foregroundStyle(.secondary).accessibilityLabel("未上报为活动状态") }
     }
 
     private func radio(_ name: String, bars: Int?, rsrp: Double?, sinr: Double?, stale: Bool = false, active: Bool = true) -> some View {
@@ -161,7 +161,7 @@ struct SignalLiveActivity: Widget {
             } else if let rsrp {
                 Text("\(rsrp, specifier: "%.0f") dBm")
                     .font(.title3.bold()).monospacedDigit().contentTransition(.numericText())
-            } else { Text("Unavailable").font(.caption).foregroundStyle(.secondary) }
+            } else { Text("不可用").font(.caption).foregroundStyle(.secondary) }
             if active, let sinr {
                 Text("SINR \(sinr, specifier: "%.0f") dB")
                     .font(.caption2).monospacedDigit().contentTransition(.numericText())
@@ -182,6 +182,6 @@ private struct SignalBarsView: View {
             .foregroundStyle(stale ? Color.orange : (bars == nil ? Color.secondary : Color.blue))
             .frame(width: 24, height: 20)
         .opacity(stale || bars == nil ? 0.5 : 1)
-        .accessibilityLabel(stale ? "Stale modem signal" : bars.map { "Modem signal \($0) of 4 bars" } ?? "Modem signal unavailable")
+        .accessibilityLabel(stale ? "调制解调器信号已过期" : bars.map { "调制解调器信号 \($0)/4 格" } ?? "调制解调器信号不可用")
     }
 }

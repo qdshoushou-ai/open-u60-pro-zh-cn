@@ -77,7 +77,7 @@ impl AtPort {
 pub fn send(at_port: &AtPort, command: &str, timeout_secs: u64) -> Result<String, String> {
     crate::httpd::gate::debug_assert_may_block();
     let _g = lock_port();
-    let port = at_port.probe().ok_or("no serial port found")?;
+    let port = at_port.probe().ok_or("未找到串口")?;
     let script = format!(
         "cat {p} & PID=$! ; sleep 0.3 ; echo -e '{cmd}\\r' > {p} ; sleep {t} ; kill $PID 2>/dev/null",
         p = port,
@@ -87,7 +87,7 @@ pub fn send(at_port: &AtPort, command: &str, timeout_secs: u64) -> Result<String
     let output = Command::new("sh")
         .args(["-c", &script])
         .output()
-        .map_err(|e| format!("failed to open port: {e}"))?;
+        .map_err(|e| format!("打开端口失败：{e}"))?;
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 

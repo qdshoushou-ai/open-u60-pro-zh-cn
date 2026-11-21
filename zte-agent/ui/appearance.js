@@ -19,8 +19,8 @@
     for (const input of document.querySelectorAll('input[name="appearance"]')) input.checked = input.value === preference;
     const status = document.querySelector('#appearance-status');
     if (status) status.textContent = preference === 'system'
-      ? `Following your device appearance · ${resolved === 'dark' ? 'Dark' : 'Light'}`
-      : `${resolved === 'dark' ? 'Dark' : 'Light'} appearance${persistent ? ' · Saved in this browser' : ' · Applied in this tab'}`;
+      ? `跟随设备外观 · ${resolved === 'dark' ? '深色' : '浅色'}`
+      : `${resolved === 'dark' ? '深色' : '浅色'}外观${persistent ? ' · 已保存到此浏览器' : ' · 仅应用于本标签页'}`;
   }
   function choose(value) {
     if (!valid(value)) return;

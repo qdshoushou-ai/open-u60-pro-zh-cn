@@ -204,7 +204,7 @@ impl Paths {
 
     pub fn point_legacy_path(&self, binary: &Path) -> io::Result<()> {
         let parent = self.legacy_link.parent().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidInput, "legacy path has no parent")
+            io::Error::new(io::ErrorKind::InvalidInput, "旧路径没有父目录")
         })?;
         let tmp = parent.join(".zte-agent.ota-link");
         let _ = fs::remove_file(&tmp);
@@ -249,7 +249,7 @@ pub fn write_json<T: Serialize>(path: &Path, value: &T) -> io::Result<()> {
 pub fn atomic_copy(source: &Path, destination: &Path, mode: u32) -> io::Result<()> {
     let parent = destination
         .parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "destination has no parent"))?;
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "目标路径没有父目录"))?;
     create_private_dir(parent)?;
     let tmp = temporary_path(destination);
     let _ = fs::remove_file(&tmp);
@@ -263,7 +263,7 @@ pub fn atomic_copy(source: &Path, destination: &Path, mode: u32) -> io::Result<(
 pub fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
     let parent = path
         .parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no parent"))?;
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "路径没有父目录"))?;
     create_private_dir(parent)?;
     let tmp = temporary_path(path);
     let _ = fs::remove_file(&tmp);
@@ -285,7 +285,7 @@ pub fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
 pub fn atomic_write_preserving_parent(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
     let parent = path
         .parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no parent"))?;
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "路径没有父目录"))?;
     fs::create_dir_all(parent)?;
     let tmp = temporary_path(path);
     remove_if_present(&tmp)?;
@@ -304,7 +304,7 @@ pub fn atomic_write_preserving_parent(path: &Path, bytes: &[u8], mode: u32) -> i
 pub fn sync_parent(path: &Path) -> io::Result<()> {
     let parent = path
         .parent()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "path has no parent"))?;
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "路径没有父目录"))?;
     File::open(parent)?.sync_all()
 }
 
@@ -313,7 +313,7 @@ pub fn available_bytes(path: &Path) -> io::Result<u64> {
     use std::os::unix::ffi::OsStrExt as _;
 
     let c_path = CString::new(path.as_os_str().as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "path contains NUL"))?;
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "路径包含 NUL"))?;
     let mut stat = std::mem::MaybeUninit::<libc::statvfs>::uninit();
     // SAFETY: `c_path` is NUL terminated and `stat` points to writable storage.
     if unsafe { libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) } != 0 {

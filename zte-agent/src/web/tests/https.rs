@@ -310,7 +310,7 @@ async fn login_page_hint() {
         if secure { b.extension(Secure) } else { b }.body(Body::empty()).unwrap()
     };
     let r = send(&c, by_name(false)).await;
-    assert_eq!((r.status, r.text().as_str()), (403, "Host not allowed"));
+    assert_eq!((r.status, r.text().as_str()), (403, "不允许的主机"));
     let r = send(&c, by_name(true)).await;
     assert!(r.status == 200 && !r.text().contains("To install"));
     // A failed login keeps it.

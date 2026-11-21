@@ -48,7 +48,7 @@ pub fn modem_online_user(state: &AppState) -> (u16, Value) {
 pub fn modem_data_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = note_user_modem_change(state);
     let result = ubus::call("zwrt_data", "set_wwaniface", Some(&parsed.to_string()));
@@ -62,7 +62,7 @@ pub fn modem_data_set(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn modem_airplane(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = note_user_modem_change(state);
     // Use AT+CFUN=1 for ONLINE (ubus nwinfo_set_mode ONLINE is broken for LPM→ONLINE recovery)
@@ -91,7 +91,7 @@ pub fn modem_airplane(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn modem_network_mode_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = note_user_modem_change(state);
     let result = ubus::call(
@@ -139,7 +139,7 @@ pub fn modem_scan_results(_state: &AppState) -> (u16, Value) {
 pub fn modem_register(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let _command = note_user_modem_change(state);
     match ubus::call("zte_nwinfo_api", "nwinfo_manual_register", Some(&parsed.to_string())) {

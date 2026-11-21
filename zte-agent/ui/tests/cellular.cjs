@@ -22,7 +22,7 @@ parsed = parse({...fixture,lteca:fixture.lteca+'265,1,1,150,20;',ltecasig:fixtur
 assert.equal(parsed.lte.carriers.length,3,'duplicate carrier entries are not counted twice');
 parsed = parse({...fixture,nr5g_rsrp:0,nrca:'0,0,0,0,0;',nrcasig:'',network_type:'LTE-NSA'});
 assert.equal(parsed.mode,'4G+'); assert.equal(parsed.nr.carriers[0].rsrp,null);
-assert.equal(parse({network_type:'5G',nr5g_rsrp:-88}).mode,'5G · mode unreported');
+assert.equal(parse({network_type:'5G',nr5g_rsrp:-88}).mode,'5G · 模式未上报');
 assert.equal(parse({network_type:'NO SERVICE',lte_rsrp:0,nr5g_rsrp:'N/A',lteca:'0,0,0,0,0;'}).hasSignal,false);
 parsed = parse({...fixture,lteca:'265,3,0,1775,15;bad;19,7,2,2850,20;',ltecasig:'bad;-101,-13,12,-74;'});
 assert.equal(parsed.lte.carriers[1].rsrp,-101,'malformed entries do not shift later carrier measurements');

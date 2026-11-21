@@ -18,7 +18,7 @@ struct NetworkTypeIcon: View {
                 .foregroundStyle(pillColor)
                 .frame(width: pillWidth, height: pillHeight)
                 .background(pillColor.opacity(0.12), in: Capsule())
-                .accessibilityLabel("No service")
+                .accessibilityLabel("无服务")
         } else if isTwoLine {
             VStack(spacing: 0) {
                 Text(generation)

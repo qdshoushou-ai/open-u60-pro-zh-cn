@@ -77,12 +77,12 @@ impl StkService {
         } else {
             match serde_json::from_slice(body) {
                 Ok(v) => v,
-                Err(_) => return error(400, "invalid JSON"),
+                Err(_) => return error(400, "无效的 JSON"),
             }
         };
         let (reply, rx) = mpsc::channel();
         let Ok(mut guard) = self.worker.lock() else {
-            return error(503, "STK worker unavailable");
+            return error(503, "STK 工作线程不可用");
         };
         if guard.is_none() {
             let (tx, rx) = mpsc::sync_channel(16);
@@ -90,7 +90,7 @@ impl StkService {
                 Ok(pipe) => pipe,
                 Err(e) => {
                     eprintln!("[stk] cannot create worker wake pipe: {e}");
-                    return error(503, "cannot start STK worker");
+                    return error(503, "无法启动 STK 工作线程");
                 }
             };
             let changed = self.on_change.get().cloned();
@@ -100,12 +100,12 @@ impl StkService {
                 .spawn(move || run(rx, wake_rx, SOCKET, changed, &shown))
                 .is_err()
             {
-                return error(503, "cannot start STK worker");
+                return error(503, "无法启动 STK 工作线程");
             }
             *guard = Some(Worker { tx, wake: wake_tx });
         }
         let Some(worker) = guard.as_ref() else {
-            return error(503, "STK worker unavailable");
+            return error(503, "STK 工作线程不可用");
         };
         match worker.tx.try_send(Request {
             action,
@@ -118,11 +118,11 @@ impl StkService {
                 // A full pipe (EAGAIN) already guarantees a wakeup, so the result is irrelevant.
                 let _ = (&worker.wake).write(&[1]);
             }
-            Err(mpsc::TrySendError::Full(_)) => return error(503, "STK request queue busy"),
+            Err(mpsc::TrySendError::Full(_)) => return error(503, "STK 请求队列繁忙"),
             Err(mpsc::TrySendError::Disconnected(_)) => {
                 *guard = None;
                 *self.shown.lock().unwrap_or_else(PoisonError::into_inner) = None;
-                return error(503, "STK worker stopped; retry loading the menu");
+                return error(503, "STK 工作线程已停止，请重新加载菜单");
             }
         }
         drop(guard);
@@ -130,7 +130,7 @@ impl StkService {
             .unwrap_or_else(|_| {
                 error(
                     504,
-                    "STK request timed out; do not repeat a selection without reloading",
+                    "STK 请求超时；未重新加载前请勿重复选择",
                 )
             })
     }
@@ -213,10 +213,10 @@ fn wait_readable(stream: RawFd, wake: RawFd, timeout_ms: libc::c_int) -> Result<
         if e.kind() == std::io::ErrorKind::Interrupted {
             return Ok(false);
         }
-        return Err(format!("RIL poll failed: {e}"));
+        return Err(format!("RIL 轮询失败：{e}"));
     }
     if fds[0].revents & libc::POLLNVAL != 0 {
-        return Err("RIL socket descriptor is invalid".into());
+        return Err("RIL 套接字描述符无效".into());
     }
     // POLLHUP / POLLERR are reported through the read (EOF or an error) so the messages stay the same.
     Ok(fds[0].revents & (libc::POLLIN | libc::POLLHUP | libc::POLLERR) != 0)
@@ -261,14 +261,14 @@ fn marshal_hex(raw: &[u8]) -> Vec<u8> {
 fn number(data: &[u8], offset: usize) -> Result<u32, String> {
     let b = data
         .get(offset..offset + 4)
-        .ok_or("truncated RIL integer")?;
+        .ok_or("RIL 整数被截断")?;
     Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
 }
 
 impl Session {
     fn connect(path: &str) -> Result<Self, String> {
         let stream =
-            UnixStream::connect(path).map_err(|e| format!("RIL connection failed: {e}"))?;
+            UnixStream::connect(path).map_err(|e| format!("RIL 连接失败：{e}"))?;
         stream
             .set_read_timeout(Some(Duration::from_millis(100)))
             .map_err(|e| e.to_string())?;
@@ -287,7 +287,7 @@ impl Session {
             root: None,
             current: None,
             phase: "initializing",
-            reason: "Connecting to SIM Toolkit".into(),
+            reason: "正在连接 SIM 工具箱".into(),
             pending: HashMap::new(),
             waiting_since: None,
         };
@@ -331,9 +331,9 @@ impl Session {
         };
         if let Err(e) = self.stream.write_all(&record(id, self.token, &payload)) {
             if let Some(reply) = reply {
-                let _ = reply.send(error(503, "RIL write failed; session invalidated"));
+                let _ = reply.send(error(503, "RIL 写入失败；会话已失效"));
             }
-            return Err(format!("RIL write failed: {e}"));
+            return Err(format!("RIL 写入失败：{e}"));
         }
         self.pending.insert(
             self.token,
@@ -351,7 +351,7 @@ impl Session {
         if matches!(req.action, "menu" | "status") {
             if req.action == "menu" && self.phase == "menu_unavailable" && self.pending.is_empty() {
                 self.phase = "initializing";
-                self.reason = "Requesting the SIM Toolkit menu".into();
+                self.reason = "正在请求 SIM 工具箱菜单".into();
                 self.send(103, &[], None, true)?;
             }
             let _ = req.reply.send(self.snapshot());
@@ -360,30 +360,30 @@ impl Session {
         if !self.pending.is_empty() || self.phase == "waiting" {
             let _ = req
                 .reply
-                .send(error(409, "SIM request in progress; refresh the session"));
+                .send(error(409, "SIM 请求正在进行，请刷新会话"));
             return Ok(());
         }
         if req.body["command_id"].as_str() != Some(&self.generation.to_string()) {
             let _ = req.reply.send(error(
                 409,
-                "stale or missing command_id; reload the SIM menu",
+                "command_id 已过期或缺失；请重新加载 SIM 菜单",
             ));
             return Ok(());
         }
         let Some(cmd) = self.current.as_ref() else {
-            let _ = req.reply.send(error(409, "no SIM command is available"));
+            let _ = req.reply.send(error(409, "没有可用的 SIM 命令"));
             return Ok(());
         };
         let result = match req.action {
             "select" => req.body["item_id"]
                 .as_u64()
                 .and_then(|v| u8::try_from(v).ok())
-                .ok_or_else(|| "item_id must be 1–255".to_string())
+                .ok_or_else(|| "item_id 必须为 1–255".to_string())
                 .and_then(|id| cmd.select(id)),
             "respond" => cmd.input_response(&req.body).map(|raw| (70, raw)),
             "cancel" if cmd.details[1] != 0x25 => Ok((70, cmd.response(0x10, &[]))),
             "back" if cmd.details[1] != 0x25 => Ok((70, cmd.response(0x11, &[]))),
-            _ => Err("no pending command for this action".into()),
+            _ => Err("此操作没有待处理的命令".into()),
         };
         match result {
             Ok((id, raw)) => self.send(id, &raw, Some(req.reply), false),
@@ -399,16 +399,16 @@ impl Session {
             0 => {
                 let token_bytes: [u8; 8] = frame
                     .get(4..12)
-                    .ok_or("truncated RIL token")?
+                    .ok_or("RIL 令牌被截断")?
                     .try_into()
-                    .map_err(|_| "invalid RIL token")?;
+                    .map_err(|_| "无效的 RIL 令牌")?;
                 let token = u64::from_be_bytes(token_bytes);
                 let errno = number(frame, 12)?;
                 let Some(p) = self.pending.remove(&token) else {
                     return Ok(());
                 };
                 if errno != 0 {
-                    let message = format!("RIL rejected STK request (error {errno})");
+                    let message = format!("RIL 拒绝了 STK 请求（错误 {errno}）");
                     if let Some(reply) = p.reply {
                         let _ = reply.send(error(502, &message));
                     }
@@ -417,13 +417,13 @@ impl Session {
                 if p.init && self.current.is_none() {
                     self.phase = "menu_unavailable";
                     self.reason =
-                        "The modem accepted SIM Toolkit initialization but has not supplied a menu"
+                        "调制解调器已接受 SIM 工具箱初始化，但尚未提供菜单"
                             .into();
                 } else if p.reply.is_some() && self.generation == p.generation {
                     self.current = None;
                     self.generation += 1;
                     self.phase = "waiting";
-                    self.reason = "Waiting for the SIM".into();
+                    self.reason = "正在等待 SIM".into();
                     self.waiting_since = Some(Instant::now());
                 }
                 if let Some(reply) = p.reply {
@@ -440,33 +440,33 @@ impl Session {
                     } else {
                         "menu_unavailable"
                     };
-                    self.reason = "SIM session ended".into();
+                    self.reason = "SIM 会话已结束".into();
                     self.waiting_since = None;
                 }
                 1013 => {
                     let len = number(frame, 8)? as usize;
                     if len > 16384 {
-                        return Err("oversized proactive command".into());
+                        return Err("主动式命令过大".into());
                     }
                     let text = std::str::from_utf8(
                         frame
                             .get(12..12 + len)
-                            .ok_or("truncated proactive command")?,
+                            .ok_or("主动式命令被截断")?,
                     )
-                    .map_err(|_| "invalid proactive text")?;
+                    .map_err(|_| "无效的主动式文本")?;
                     let cmd = Command::parse(&codec::unhex(text.trim_end_matches('\0'))?)?;
                     self.proactive(cmd)?;
                 }
                 // Refresh/removal changes the SIM identity or toolkit contents. Discard all cached menus.
-                1017 => return Err("SIM refreshed; reload the toolkit session".into()),
+                1017 => return Err("SIM 已刷新，请重新加载 SIM 工具箱会话".into()),
                 1014 | 1015 => {
                     // Event notifications are not proactive requests. Do not acknowledge or approve calls.
                     self.reason =
-                        "SIM event received; no automatic service approval was sent".into();
+                        "收到 SIM 事件；未自动发送服务批准".into();
                 }
                 _ => {} // Other RIL indications are deliberately ignored (and never logged).
             },
-            _ => return Err("unknown RIL frame type".into()),
+            _ => return Err("未知的 RIL 帧类型".into()),
         }
         Ok(())
     }
@@ -491,7 +491,7 @@ impl Session {
                 self.reason = if self.root.is_some() {
                     String::new()
                 } else {
-                    "SIM removed its toolkit menu".into()
+                    "SIM 已移除其工具箱菜单".into()
                 };
                 self.send(70, &response, None, false)?;
             }
@@ -504,7 +504,7 @@ impl Session {
                 // No automatic calls, SMS, USSD, browser launches, or channel opening.
                 let response = cmd.response(0x30, &[]);
                 self.phase = "unsupported_command";
-                self.reason = format!("SIM command {:02X} is not implemented", cmd.details[1]);
+                self.reason = format!("SIM 命令 {:02X} 未实现", cmd.details[1]);
                 self.current = None;
                 self.send(70, &response, None, false)?;
             }
@@ -517,7 +517,7 @@ impl Session {
     fn read_socket(&mut self) -> Result<(), String> {
         let mut bytes = [0; 8192];
         match self.stream.read(&mut bytes) {
-            Ok(0) => return Err("RIL socket disconnected".into()),
+            Ok(0) => return Err("RIL 套接字已断开".into()),
             Ok(n) => self.buffer.extend(&bytes[..n]),
             Err(e)
                 if matches!(
@@ -526,12 +526,12 @@ impl Session {
                         | std::io::ErrorKind::TimedOut
                         | std::io::ErrorKind::Interrupted
                 ) => {}
-            Err(e) => return Err(format!("RIL read failed: {e}")),
+            Err(e) => return Err(format!("RIL 读取失败：{e}")),
         }
         while self.buffer.len() >= 4 {
             let n = number(&self.buffer, 0)? as usize;
             if !(4..=65536).contains(&n) {
-                return Err("invalid RIL record length".into());
+                return Err("无效的 RIL 记录长度".into());
             }
             if self.buffer.len() < n + 4 {
                 break;
@@ -548,11 +548,11 @@ impl Session {
     fn check_deadlines(&self) -> Result<(), String> {
         let now = Instant::now();
         if self.pending.values().any(|p| now >= p.deadline) {
-            return Err("STK response timed out; session invalidated, no automatic retry".into());
+            return Err("STK 响应超时；会话已失效，不会自动重试".into());
         }
         if self.waiting_since.is_some_and(|t| now >= t + WAITING_LIMIT) {
             return Err(
-                "SIM did not return a command; reload the session before trying again".into(),
+                "SIM 未返回命令；请重新加载会话后再试".into(),
             );
         }
         Ok(())
@@ -726,7 +726,7 @@ mod tests {
         let answer = rx.recv().unwrap();
         assert_eq!((answer.0, service.session_view()), (200, answer.clone()));
         // A failed session: the route's answer, from memory.
-        invalidate(&mut live, &mut last_error, "RIL socket disconnected".into());
+        invalidate(&mut live, &mut last_error, "RIL 套接字已断开".into());
         let (tx, rx) = mpsc::channel();
         serve(Request { action: "status", body: json!({}), reply: tx }, &mut live, &mut last_error, "", &service.shown, None);
         assert_eq!((rx.recv().unwrap(), service.session_view()), (view(&None, &last_error), view(&None, &last_error)));
@@ -850,10 +850,10 @@ mod tests {
                 init: false,
             },
         );
-        assert!(s.check_deadlines().unwrap_err().contains("timed out"));
+        assert!(s.check_deadlines().unwrap_err().contains("超时"));
         s.pending.clear();
         s.waiting_since = Some(Instant::now() - WAITING_LIMIT - Duration::from_millis(1));
-        assert!(s.check_deadlines().unwrap_err().contains("did not return"));
+        assert!(s.check_deadlines().unwrap_err().contains("未返回"));
         s.waiting_since = Some(Instant::now());
         assert!(s.check_deadlines().is_ok());
     }
@@ -978,7 +978,7 @@ mod tests {
         assert_eq!(taken(), 1);
         // The session fails: one more.
         let mut last_error = String::new();
-        invalidate(&mut live, &mut last_error, "RIL socket disconnected".into());
+        invalidate(&mut live, &mut last_error, "RIL 套接字已断开".into());
         publish(&live, &last_error, &shown, Some(&f));
         publish(&live, &last_error, &shown, Some(&f));
         assert_eq!(taken(), 1);

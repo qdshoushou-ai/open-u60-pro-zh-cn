@@ -7,9 +7,9 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/docs/api-reference", label: "API Reference" },
-  { href: "/docs/troubleshooting", label: "Troubleshooting" },
-  { href: "/docs/faq", label: "FAQ" },
+  { href: "/docs/api-reference", label: "API 参考" },
+  { href: "/docs/troubleshooting", label: "故障排查" },
+  { href: "/docs/faq", label: "常见问题" },
 ];
 
 export function DocsNav() {
@@ -24,7 +24,7 @@ export function DocsNav() {
         className="mb-4 flex items-center gap-2 text-sm text-text-dim lg:hidden"
       >
         {open ? <X size={16} /> : <Menu size={16} />}
-        {open ? "Close" : "Menu"}
+        {open ? "关闭" : "菜单"}
       </button>
 
       <nav

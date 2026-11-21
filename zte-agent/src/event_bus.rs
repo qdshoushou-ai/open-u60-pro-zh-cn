@@ -202,7 +202,7 @@ fn ubus_listen_command(patterns: &[String]) -> Command {
 fn spawn_ubus_listen(patterns: &[String]) -> Result<Child, String> {
     ubus_listen_command(patterns)
         .spawn()
-        .map_err(|e| format!("spawn ubus listen: {e}"))
+        .map_err(|e| format!("启动 ubus 监听失败：{e}"))
 }
 
 /// Ask the kernel to SIGTERM the child when the thread that spawned it

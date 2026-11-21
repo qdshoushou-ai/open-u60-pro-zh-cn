@@ -46,10 +46,10 @@ impl Default for Config {
 impl Config {
     fn validate(self) -> Result<Self, String> {
         if self.ipv4_ttl == 0 {
-            return Err("ipv4_ttl must be 1-255".into());
+            return Err("ipv4_ttl 必须为 1-255".into());
         }
         if self.ipv6_hop_limit == 0 {
-            return Err("ipv6_hop_limit must be 1-255".into());
+            return Err("ipv6_hop_limit 必须为 1-255".into());
         }
         Ok(self)
     }
@@ -59,7 +59,7 @@ impl Config {
         if let Some(value) = patch.get("enabled") {
             next.enabled = value
                 .as_bool()
-                .ok_or_else(|| "enabled must be a boolean".to_string())?;
+                .ok_or_else(|| "enabled 必须为布尔值".to_string())?;
         }
         if let Some(value) = patch.get("ipv4_ttl") {
             next.ipv4_ttl = parse_hop_value(value, "ipv4_ttl")?;
@@ -80,20 +80,20 @@ impl Config {
 
     fn save(self, path: &Path, temp_path: &Path) -> Result<(), String> {
         let text = serde_json::to_string(&self)
-            .map_err(|error| format!("serialize TTL configuration: {error}"))?;
-        fs::write(temp_path, text).map_err(|error| format!("write TTL configuration: {error}"))?;
-        fs::rename(temp_path, path).map_err(|error| format!("commit TTL configuration: {error}"))
+            .map_err(|error| format!("序列化 TTL 配置失败：{error}"))?;
+        fs::write(temp_path, text).map_err(|error| format!("写入 TTL 配置失败：{error}"))?;
+        fs::rename(temp_path, path).map_err(|error| format!("提交 TTL 配置失败：{error}"))
     }
 }
 
 fn parse_hop_value(value: &Value, name: &str) -> Result<u8, String> {
     let value = value
         .as_u64()
-        .ok_or_else(|| format!("{name} must be an integer from 1 to 255"))?;
+        .ok_or_else(|| format!("{name} 必须为 1 到 255 的整数"))?;
     u8::try_from(value)
         .ok()
         .filter(|value| *value != 0)
-        .ok_or_else(|| format!("{name} must be 1-255"))
+        .ok_or_else(|| format!("{name} 必须为 1-255"))
 }
 
 #[derive(Debug)]
@@ -207,7 +207,7 @@ impl TtlManager {
 
 fn with_rollback(error: String, rollback: Option<String>) -> String {
     match rollback {
-        Some(rollback) => format!("{error}; rollback also failed: {rollback}"),
+        Some(rollback) => format!("{error}；回滚也失败：{rollback}"),
         None => error,
     }
 }
@@ -225,8 +225,8 @@ pub fn config_get(manager: &TtlManager) -> (u16, Value) {
 pub fn config_set(manager: &TtlManager, body: &[u8]) -> (u16, Value) {
     let patch: Value = match serde_json::from_slice::<Value>(body) {
         Ok(value) if value.is_object() => value,
-        Ok(_) => return (400, json!({"ok": false, "error": "JSON object required"})),
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Ok(_) => return (400, json!({"ok": false, "error": "需要 JSON 对象"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     match manager.update(&patch) {
         Ok(()) => config_get(manager),
@@ -318,15 +318,15 @@ fn run_required(program: &str, args: &[&str]) -> Result<(), String> {
     let output = Command::new(program)
         .args(args)
         .output()
-        .map_err(|error| format!("run {program}: {error}"))?;
+        .map_err(|error| format!("运行 {program} 失败：{error}"))?;
     if output.status.success() {
         return Ok(());
     }
     let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if detail.is_empty() {
-        Err(format!("{program} exited with {}", output.status))
+        Err(format!("{program} 退出，状态码 {}", output.status))
     } else {
-        Err(format!("{program}: {detail}"))
+        Err(format!("{program}：{detail}"))
     }
 }
 

@@ -25,36 +25,34 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "open-u60-pro — ZTE U60 Pro Toolkit",
+    default: "open-u60-pro — ZTE U60 Pro 工具集",
     template: "%s | open-u60-pro",
   },
   description:
-    "Unlock the full potential of your ZTE U60 Pro 5G mobile router. On-device agent, native companion apps, and web-based bootstrap tools.",
+    "释放 ZTE U60 Pro 5G 移动路由器的全部潜能。设备端 Agent、原生配套 App，以及基于 Web 的引导部署工具。",
   keywords: [
     "ZTE U60 Pro",
     "MU5250",
-    "5G Router",
-    "Band Locking",
-    "Signal Monitor",
+    "5G 路由器",
+    "频段锁定",
+    "信号监控",
     "OpenWrt",
     "REST API",
     "WebUSB",
   ],
   authors: [{ name: "jesther-ai" }],
   openGraph: {
-    title: "open-u60-pro — ZTE U60 Pro Toolkit",
-    description:
-      "Unlock the full potential of your ZTE U60 Pro 5G mobile router.",
+    title: "open-u60-pro — ZTE U60 Pro 工具集",
+    description: "释放 ZTE U60 Pro 5G 移动路由器的全部潜能。",
     url: "https://open-u60-pro.vercel.app",
     siteName: "open-u60-pro",
-    locale: "en_US",
+    locale: "zh_CN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "open-u60-pro — ZTE U60 Pro Toolkit",
-    description:
-      "Unlock the full potential of your ZTE U60 Pro 5G mobile router.",
+    title: "open-u60-pro — ZTE U60 Pro 工具集",
+    description: "释放 ZTE U60 Pro 5G 移动路由器的全部潜能。",
   },
   robots: { index: true, follow: true },
   metadataBase: new URL("https://open-u60-pro.vercel.app"),
@@ -67,7 +65,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh-CN"
       className={`${syne.variable} ${jakarta.variable} ${jetbrains.variable}`}
     >
       <head>

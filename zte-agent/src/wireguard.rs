@@ -118,57 +118,57 @@ impl Config {
     fn validate(&self) -> Result<(), String> {
         let private = parse_key(&self.private_key, "interface private key")?;
         if private == Key::zero() {
-            return Err("interface private key cannot be all zeroes".into());
+            return Err("接口私钥不能全为零".into());
         }
         if self.addresses.is_empty() {
-            return Err("the WireGuard interface needs at least one Address".into());
+            return Err("WireGuard 接口至少需要一个 Address".into());
         }
         if self.addresses.len() > 8 {
-            return Err("at most 8 interface addresses are supported".into());
+            return Err("最多支持 8 个接口地址".into());
         }
         for address in &self.addresses {
             parse_network(address, "interface address")?;
         }
         if !(1280..=1500).contains(&self.mtu) {
-            return Err("MTU must be between 1280 and 1500".into());
+            return Err("MTU 必须介于 1280 和 1500 之间".into());
         }
         if self.peers.is_empty() {
-            return Err("the configuration needs at least one [Peer]".into());
+            return Err("配置至少需要一个 [Peer]".into());
         }
         if self.peers.len() > MAX_PEERS {
-            return Err(format!("at most {MAX_PEERS} peers are supported"));
+            return Err(format!("最多支持 {MAX_PEERS} 个对端"));
         }
 
         let local_public = private.get_public();
         let mut public_keys = HashSet::new();
         let mut route_owners: HashMap<IpNet, &str> = HashMap::new();
         for peer in &self.peers {
-            let public = parse_key(&peer.public_key, &format!("{} public key", peer.name))?;
+            let public = parse_key(&peer.public_key, &format!("{} 的公钥", peer.name))?;
             if public == local_public {
-                return Err(format!("{} uses the interface's own public key", peer.name));
+                return Err(format!("{} 使用了接口自身的公钥", peer.name));
             }
             if !public_keys.insert(public.to_base64()) {
-                return Err(format!("{} repeats a peer public key", peer.name));
+                return Err(format!("{} 重复了对端公钥", peer.name));
             }
             if let Some(key) = peer.preshared_key.as_deref() {
                 parse_key(key, &format!("{} preshared key", peer.name))?;
             }
             parse_endpoint(&peer.endpoint)?;
             if peer.allowed_ips.is_empty() {
-                return Err(format!("{} needs at least one AllowedIPs route", peer.name));
+                return Err(format!("{} 至少需要一条 AllowedIPs 路由", peer.name));
             }
             if peer.allowed_ips.len() > MAX_ALLOWED_IPS {
                 return Err(format!(
-                    "{} has more than {MAX_ALLOWED_IPS} AllowedIPs routes",
+                    "{} 的 AllowedIPs 路由超过 {MAX_ALLOWED_IPS} 条",
                     peer.name
                 ));
             }
             for route in &peer.allowed_ips {
-                let network = parse_network(route, &format!("{} AllowedIPs", peer.name))?;
+                let network = parse_network(route, &format!("{} 的 AllowedIPs", peer.name))?;
                 reject_unsafe_route(network)?;
                 if let Some(owner) = route_owners.insert(network, &peer.name) {
                     return Err(format!(
-                        "route {network} is assigned to both {owner} and {}",
+                        "路由 {network} 同时分配给了 {owner} 和 {}",
                         peer.name
                     ));
                 }
@@ -179,30 +179,30 @@ impl Config {
 
     fn load(path: &Path) -> Result<Self, String> {
         let text = fs::read_to_string(path)
-            .map_err(|error| format!("read saved WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("读取已保存的 WireGuard 配置失败：{error}"))?;
         let config: Self = serde_json::from_str(&text)
-            .map_err(|error| format!("parse saved WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("解析已保存的 WireGuard 配置失败：{error}"))?;
         config.validate()?;
         Ok(config)
     }
 
     fn save(&self, path: &Path, temp_path: &Path) -> Result<(), String> {
         let text = serde_json::to_vec(self)
-            .map_err(|error| format!("serialize WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("序列化 WireGuard 配置失败：{error}"))?;
         let mut file = OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
             .mode(0o600)
             .open(temp_path)
-            .map_err(|error| format!("open temporary WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("打开临时 WireGuard 配置失败：{error}"))?;
         file.set_permissions(fs::Permissions::from_mode(0o600))
-            .map_err(|error| format!("protect WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("保护 WireGuard 配置失败：{error}"))?;
         file.write_all(&text)
             .and_then(|()| file.sync_all())
-            .map_err(|error| format!("write WireGuard configuration: {error}"))?;
+            .map_err(|error| format!("写入 WireGuard 配置失败：{error}"))?;
         fs::rename(temp_path, path)
-            .map_err(|error| format!("commit WireGuard configuration: {error}"))
+            .map_err(|error| format!("提交 WireGuard 配置失败：{error}"))
     }
 }
 
@@ -321,7 +321,7 @@ impl WireGuardManager {
             .clone();
         if next.private_key.is_empty() {
             return Err(UpdateError::Invalid(
-                "import a WireGuard configuration before enabling the tunnel".into(),
+                "启用隧道前请先导入 WireGuard 配置".into(),
             ));
         }
         next.enabled = enabled;
@@ -335,7 +335,7 @@ impl WireGuardManager {
             .unwrap_or_else(|poison| poison.into_inner());
         state.active = previous.enabled && rollback.is_none();
         state.last_error = Some(match rollback {
-            Some(rollback) => format!("{error}; rollback also failed: {rollback}"),
+            Some(rollback) => format!("{error}；回滚也失败：{rollback}"),
             None => error.to_string(),
         });
     }
@@ -375,7 +375,7 @@ pub fn import(manager: &WireGuardManager, body: &[u8]) -> (u16, Value) {
         Err(_) => {
             return (
                 400,
-                json!({"ok": false, "error": "config and enabled are required"}),
+                json!({"ok": false, "error": "config 和 enabled 为必填项"}),
             )
         }
     };
@@ -406,7 +406,7 @@ fn update_response(manager: &WireGuardManager, result: Result<(), UpdateError>) 
 fn parse_ini(text: &str) -> Result<Config, String> {
     if text.len() > MAX_CONFIG_BYTES {
         return Err(format!(
-            "WireGuard configuration exceeds {MAX_CONFIG_BYTES} bytes"
+            "WireGuard 配置超过 {MAX_CONFIG_BYTES} 字节"
         ));
     }
     let mut config = Config::default();
@@ -420,7 +420,7 @@ fn parse_ini(text: &str) -> Result<Config, String> {
         if line.eq_ignore_ascii_case("[Interface]") {
             if !matches!(section, Section::None) {
                 return Err(format!(
-                    "line {line_number}: [Interface] must appear once and first"
+                    "第 {line_number} 行：[Interface] 必须只出现一次且位于最前"
                 ));
             }
             section = Section::Interface;
@@ -429,11 +429,11 @@ fn parse_ini(text: &str) -> Result<Config, String> {
         if line.eq_ignore_ascii_case("[Peer]") {
             if matches!(section, Section::None) {
                 return Err(format!(
-                    "line {line_number}: [Interface] must appear before [Peer]"
+                    "第 {line_number} 行：[Interface] 必须位于 [Peer] 之前"
                 ));
             }
             if config.peers.len() >= MAX_PEERS {
-                return Err(format!("at most {MAX_PEERS} peers are supported"));
+                return Err(format!("最多支持 {MAX_PEERS} 个对端"));
             }
             config.peers.push(Peer {
                 name: format!("Peer {}", config.peers.len() + 1),
@@ -449,12 +449,12 @@ fn parse_ini(text: &str) -> Result<Config, String> {
         let (key, value) = line
             .split_once('=')
             .map(|(key, value)| (key.trim(), value.trim()))
-            .ok_or_else(|| format!("line {line_number}: expected Key = value"))?;
+            .ok_or_else(|| format!("第 {line_number} 行：应为 Key = value"))?;
         if value.is_empty() {
-            return Err(format!("line {line_number}: {key} cannot be empty"));
+            return Err(format!("第 {line_number} 行：{key} 不能为空"));
         }
         match section {
-            Section::None => return Err(format!("line {line_number}: add [Interface] first")),
+            Section::None => return Err(format!("第 {line_number} 行：请先添加 [Interface]")),
             Section::Interface => parse_interface_line(&mut config, key, value, line_number)?,
             Section::Peer(index) => {
                 parse_peer_line(&mut config.peers[index], key, value, line_number)?
@@ -462,7 +462,7 @@ fn parse_ini(text: &str) -> Result<Config, String> {
         }
     }
     if matches!(section, Section::None) {
-        return Err("configuration is missing [Interface]".into());
+        return Err("配置缺少 [Interface]".into());
     }
     config.validate()?;
     Ok(config)
@@ -494,7 +494,7 @@ fn parse_interface_line(
         "mtu" => {
             config.mtu = value
                 .parse()
-                .map_err(|_| format!("line {line}: MTU must be a number"))?;
+                .map_err(|_| format!("第 {line} 行：MTU 必须为数字"))?;
             Ok(())
         }
         "listenport" => {
@@ -503,14 +503,14 @@ fn parse_interface_line(
                     .parse::<u16>()
                     .ok()
                     .filter(|port| *port != 0)
-                    .ok_or_else(|| format!("line {line}: ListenPort must be 1-65535"))?,
+                    .ok_or_else(|| format!("第 {line} 行：ListenPort 必须为 1-65535"))?,
             );
             Ok(())
         }
         "table" | "preup" | "postup" | "predown" | "postdown" | "saveconfig" => Err(format!(
-            "line {line}: {key} is not accepted; the U60 agent owns routes and never executes hook commands"
+            "第 {line} 行：不接受 {key}；U60 Agent 负责路由，且从不执行钩子命令"
         )),
-        _ => Err(format!("line {line}: unsupported [Interface] key {key}")),
+        _ => Err(format!("第 {line} 行：不支持的 [Interface] 键 {key}")),
     }
 }
 
@@ -519,7 +519,7 @@ fn parse_peer_line(peer: &mut Peer, key: &str, value: &str, line: usize) -> Resu
         "publickey" => set_once(&mut peer.public_key, value, "PublicKey", line),
         "presharedkey" => {
             if peer.preshared_key.is_some() {
-                return Err(format!("line {line}: PresharedKey appears more than once"));
+                return Err(format!("第 {line} 行：PresharedKey 出现多次"));
             }
             peer.preshared_key = Some(value.to_string());
             Ok(())
@@ -533,17 +533,17 @@ fn parse_peer_line(peer: &mut Peer, key: &str, value: &str, line: usize) -> Resu
             peer.persistent_keepalive = Some(
                 value
                     .parse()
-                    .map_err(|_| format!("line {line}: PersistentKeepalive must be 0-65535"))?,
+                    .map_err(|_| format!("第 {line} 行：PersistentKeepalive 必须为 0-65535"))?,
             );
             Ok(())
         }
-        _ => Err(format!("line {line}: unsupported [Peer] key {key}")),
+        _ => Err(format!("第 {line} 行：不支持的 [Peer] 键 {key}")),
     }
 }
 
 fn set_once(target: &mut String, value: &str, key: &str, line: usize) -> Result<(), String> {
     if !target.is_empty() {
-        return Err(format!("line {line}: {key} appears more than once"));
+        return Err(format!("第 {line} 行：{key} 出现多次"));
     }
     *target = value.to_string();
     Ok(())
@@ -559,20 +559,20 @@ fn split_list(value: &str) -> impl Iterator<Item = String> + '_ {
 
 fn parse_key(value: &str, label: &str) -> Result<Key, String> {
     Key::from_base64(value.trim())
-        .map_err(|_| format!("{label} must be a 32-byte base64 WireGuard key"))
+        .map_err(|_| format!("{label} 必须为 32 字节的 base64 WireGuard 密钥"))
 }
 
 fn parse_network(value: &str, label: &str) -> Result<IpNet, String> {
     value
         .trim()
         .parse()
-        .map_err(|_| format!("invalid {label}: {value}"))
+        .map_err(|_| format!("无效的 {label}：{value}"))
 }
 
 fn parse_endpoint(value: &str) -> Result<(), String> {
     let (host, port) = endpoint_parts(value)?;
     if host.is_empty() || port.parse::<u16>().ok().filter(|port| *port != 0).is_none() {
-        return Err(format!("invalid WireGuard endpoint: {value}"));
+        return Err(format!("无效的 WireGuard 端点：{value}"));
     }
     Ok(())
 }
@@ -581,35 +581,35 @@ fn endpoint_parts(value: &str) -> Result<(&str, &str), String> {
     if let Some(rest) = value.strip_prefix('[') {
         let (host, rest) = rest
             .split_once(']')
-            .ok_or_else(|| format!("invalid WireGuard endpoint: {value}"))?;
+            .ok_or_else(|| format!("无效的 WireGuard 端点：{value}"))?;
         let port = rest
             .strip_prefix(':')
-            .ok_or_else(|| format!("invalid WireGuard endpoint: {value}"))?;
+            .ok_or_else(|| format!("无效的 WireGuard 端点：{value}"))?;
         return Ok((host, port));
     }
     value
         .rsplit_once(':')
-        .ok_or_else(|| format!("WireGuard endpoint needs host:port: {value}"))
+        .ok_or_else(|| format!("WireGuard 端点需要 host:port：{value}"))
 }
 
 fn reject_unsafe_route(network: IpNet) -> Result<(), String> {
     if network.prefix_len() == 0 {
         return Err(format!(
-            "default route {network} is blocked in the safe split-tunnel release"
+            "安全拆分隧道版本中禁止默认路由 {network}"
         ));
     }
     match network.network() {
         IpAddr::V4(address)
             if address.is_loopback() || address.is_multicast() || address.is_link_local() =>
         {
-            Err(format!("unsafe WireGuard route: {network}"))
+            Err(format!("不安全的 WireGuard 路由：{network}"))
         }
         IpAddr::V6(address)
             if address.is_loopback()
                 || address.is_multicast()
                 || address.is_unicast_link_local() =>
         {
-            Err(format!("unsafe WireGuard route: {network}"))
+            Err(format!("不安全的 WireGuard 路由：{network}"))
         }
         _ => Ok(()),
     }
@@ -618,14 +618,14 @@ fn reject_unsafe_route(network: IpNet) -> Result<(), String> {
 fn resolve_endpoint(endpoint: &str) -> Result<SocketAddr, String> {
     let resolved = endpoint
         .to_socket_addrs()
-        .map_err(|error| format!("resolve WireGuard endpoint {endpoint}: {error}"))?
+        .map_err(|error| format!("解析 WireGuard 端点 {endpoint} 失败：{error}"))?
         .collect::<Vec<_>>();
     resolved
         .iter()
         .copied()
         .find(SocketAddr::is_ipv4)
         .or_else(|| resolved.first().copied())
-        .ok_or_else(|| format!("WireGuard endpoint {endpoint} returned no address"))
+        .ok_or_else(|| format!("WireGuard 端点 {endpoint} 未返回地址"))
 }
 
 fn apply(config: &Config) -> Result<(), String> {
@@ -636,7 +636,7 @@ fn apply(config: &Config) -> Result<(), String> {
     config.validate()?;
 
     let interface = InterfaceName::from_str(INTERFACE)
-        .map_err(|error| format!("invalid WireGuard interface name: {error}"))?;
+        .map_err(|error| format!("无效的 WireGuard 接口名：{error}"))?;
     let private = parse_key(&config.private_key, "interface private key")?;
     let mut update = DeviceUpdate::new().set_private_key(private).replace_peers();
     update = match config.listen_port {
@@ -649,7 +649,7 @@ fn apply(config: &Config) -> Result<(), String> {
     let mut resolved = Vec::with_capacity(config.peers.len());
     for peer in &config.peers {
         let endpoint = resolve_endpoint(&peer.endpoint)?;
-        let public = parse_key(&peer.public_key, &format!("{} public key", peer.name))?;
+        let public = parse_key(&peer.public_key, &format!("{} 的公钥", peer.name))?;
         let mut builder = PeerConfigBuilder::new(&public)
             .set_endpoint(endpoint)
             .replace_allowed_ips();
@@ -661,17 +661,17 @@ fn apply(config: &Config) -> Result<(), String> {
             builder = builder.set_persistent_keepalive_interval(interval);
         }
         for route in &peer.allowed_ips {
-            let network = parse_network(route, &format!("{} AllowedIPs", peer.name))?;
+            let network = parse_network(route, &format!("{} 的 AllowedIPs", peer.name))?;
             if network.contains(&endpoint.ip()) {
                 return Err(format!(
-                    "{} route {network} contains its own endpoint {}; this would loop the tunnel",
+                    "{} 的路由 {network} 包含其自身端点 {}，这会导致隧道路由回环",
                     peer.name,
                     endpoint.ip()
                 ));
             }
             if lan_address.is_some_and(|address| network.contains(&address)) {
                 return Err(format!(
-                    "{} route {network} contains the U60 LAN address; this would make the console unreachable",
+                    "{} 的路由 {network} 包含 U60 LAN 地址，会导致控制台无法访问",
                     peer.name
                 ));
             }
@@ -683,7 +683,7 @@ fn apply(config: &Config) -> Result<(), String> {
 
     if let Err(error) = update.apply(&interface, BACKEND) {
         let _ = clear_owned_state();
-        return Err(format!("configure kernel WireGuard interface: {error}"));
+        return Err(format!("配置内核 WireGuard 接口失败：{error}"));
     }
     let result = configure_interface(config);
     if let Err(error) = result {
@@ -858,15 +858,15 @@ fn run_required(program: &str, args: &[&str]) -> Result<(), String> {
     let output = Command::new(program)
         .args(args)
         .output()
-        .map_err(|error| format!("run {program}: {error}"))?;
+        .map_err(|error| format!("运行 {program} 失败：{error}"))?;
     if output.status.success() {
         return Ok(());
     }
     let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if detail.is_empty() {
-        Err(format!("{program} exited with {}", output.status))
+        Err(format!("{program} 退出，状态码 {}", output.status))
     } else {
-        Err(format!("{program}: {detail}"))
+        Err(format!("{program}：{detail}"))
     }
 }
 
@@ -930,7 +930,7 @@ fn system_time_secs(time: SystemTime) -> Option<u64> {
 
 fn with_rollback(error: String, rollback: Option<String>) -> String {
     match rollback {
-        Some(rollback) => format!("{error}; rollback also failed: {rollback}"),
+        Some(rollback) => format!("{error}；回滚也失败：{rollback}"),
         None => error,
     }
 }
@@ -975,7 +975,7 @@ mod tests {
     #[test]
     fn parser_rejects_default_route() {
         let error = parse_ini(&valid_config("0.0.0.0/0")).err().unwrap();
-        assert!(error.contains("safe split-tunnel"), "{error}");
+        assert!(error.contains("安全拆分隧道"), "{error}");
     }
 
     #[test]
@@ -985,7 +985,7 @@ mod tests {
             "Address = 10.8.0.2/32\nPostUp = reboot",
         );
         let error = parse_ini(&input).err().unwrap();
-        assert!(error.contains("never executes hook commands"), "{error}");
+        assert!(error.contains("从不执行钩子命令"), "{error}");
     }
 
     #[test]

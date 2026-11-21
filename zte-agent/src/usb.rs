@@ -14,7 +14,7 @@ pub fn usb_status(_state: &AppState) -> (u16, Value) {
 pub fn usb_mode_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call("zwrt_bsp.usb", "set", Some(&parsed.to_string()));
     events::touch(Topic::Usb);
@@ -27,7 +27,7 @@ pub fn usb_mode_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn usb_powerbank_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let result = ubus::call("zwrt_bsp.powerbank", "set", Some(&parsed.to_string()));
     // The charger view changes with powerbank mode; make the next read fresh

@@ -10,9 +10,9 @@ data class ConfigHeader(
         get() = when (payloadType) {
             PAYLOAD_TYPE_ECB -> "AES-128-ECB"
             PAYLOAD_TYPE_CBC -> "AES-256-CBC"
-            PAYLOAD_TYPE_PLAIN -> "Plain (unencrypted)"
-            PAYLOAD_TYPE_CBC_NEW -> "AES-256-CBC (new)"
-            else -> "Unknown ($payloadType)"
+            PAYLOAD_TYPE_PLAIN -> "明文（未加密）"
+            PAYLOAD_TYPE_CBC_NEW -> "AES-256-CBC（新）"
+            else -> "未知（$payloadType）"
         }
 
     companion object {
@@ -44,8 +44,8 @@ data class KnownKey(
 
     companion object {
         val KNOWN_KEYS = listOf(
-            KnownKey("ZTE default (MIIBIjANB...)", "MIIBIjANBgkqhk".toByteArray()),
-            KnownKey("ZTE default 2", "Wj".toByteArray()),
+            KnownKey("ZTE 默认（MIIBIjANB…）", "MIIBIjANBgkqhk".toByteArray()),
+            KnownKey("ZTE 默认 2", "Wj".toByteArray()),
             KnownKey("ZTE ZXHN H298N", "ZTE%FN\$GponNJ025".toByteArray()),
             KnownKey("ZTE ZXHN H108N V2.5", "GrWM2ans*f@7SSc&".toByteArray()),
             KnownKey("ZTE ZXHN H168N V3.5", byteArrayOf(
@@ -60,9 +60,9 @@ data class KnownKey(
             KnownKey("ZTE ZXHN F609", "'MMI@FP*Jhg&^%\$\$".toByteArray()),
             KnownKey("ZTE ZXHN F660", "ZTE%FN\$GponNJ025".toByteArray()),
             KnownKey("ZTE ZXHN H267A", "GrWM2ans*f@7SSc&".toByteArray()),
-            KnownKey("ZTE generic key 1", "402c38de39bed665".toByteArray()),
-            KnownKey("ZTE generic key 2", "8cc72b05705d5c46".toByteArray()),
-            KnownKey("ZTE generic key 3", "SMGPOINTzteGpon!".toByteArray()),
+            KnownKey("ZTE 通用密钥 1", "402c38de39bed665".toByteArray()),
+            KnownKey("ZTE 通用密钥 2", "8cc72b05705d5c46".toByteArray()),
+            KnownKey("ZTE 通用密钥 3", "SMGPOINTzteGpon!".toByteArray()),
         )
 
         fun keyFromSerial(serial: String): ByteArray {
@@ -78,10 +78,10 @@ data class KnownKey(
         fun getAllKeys(serial: String? = null, signature: ByteArray? = null): List<KnownKey> {
             val candidates = mutableListOf<KnownKey>()
             if (signature?.isNotEmpty() == true) {
-                candidates.add(KnownKey("derived from signature", keyFromSignature(signature)))
+                candidates.add(KnownKey("从签名派生", keyFromSignature(signature)))
             }
             if (!serial.isNullOrBlank()) {
-                candidates.add(KnownKey("derived from serial $serial", keyFromSerial(serial)))
+                candidates.add(KnownKey("从序列号 $serial 派生", keyFromSerial(serial)))
             }
             candidates.addAll(KNOWN_KEYS)
             return candidates

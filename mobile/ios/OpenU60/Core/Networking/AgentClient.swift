@@ -127,7 +127,7 @@ final class AgentClient {
             authenticated: false
         ) { data -> String in
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw AgentError.decodingError("Expected JSON object from login")
+                throw AgentError.decodingError("登录响应不是 JSON 对象")
             }
             guard let ok = json["ok"] as? Bool, ok,
                   let dataDict = json["data"] as? [String: Any],
@@ -173,10 +173,10 @@ final class AgentClient {
             retryOnUnauthorized: retryOnUnauthorized
         ) { data -> Any? in
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw AgentError.decodingError("Expected JSON object")
+                throw AgentError.decodingError("响应不是 JSON 对象")
             }
             guard let ok = json["ok"] as? Bool, ok else {
-                throw AgentError.serverError(json["error"] as? String ?? "Unknown error")
+                throw AgentError.serverError(json["error"] as? String ?? "未知错误")
             }
             return json["data"]
         }
@@ -251,7 +251,7 @@ final class AgentClient {
         case 401:
             throw AgentError.unauthorized
         default:
-            let message = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            let message = String(data: data, encoding: .utf8) ?? "HTTP 状态码 \(httpResponse.statusCode)"
             throw AgentError.serverError(message)
         }
     }
@@ -275,10 +275,10 @@ final class AgentClient {
             // JSONDecoder is a class that cannot be shared across those tasks.
             let wrapper = try JSONDecoder().decode(AgentResponse<T>.self, from: data)
             guard wrapper.ok else {
-                throw AgentError.serverError(wrapper.error ?? "Unknown error")
+                throw AgentError.serverError(wrapper.error ?? "未知错误")
             }
             guard let result = wrapper.data else {
-                throw AgentError.decodingError("Response ok but data is null")
+                throw AgentError.decodingError("响应成功但数据为空")
             }
             return result
         } catch let error as AgentError {

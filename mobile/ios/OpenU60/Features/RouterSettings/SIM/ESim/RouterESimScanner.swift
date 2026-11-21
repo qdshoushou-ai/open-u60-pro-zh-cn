@@ -40,7 +40,7 @@ final class ESimScannerController: UIViewController, DataScannerViewControllerDe
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
-        instruction.text = "Place the operator’s eSIM QR code inside the frame"
+        instruction.text = "将运营商的 eSIM 二维码放入取景框内"
         instruction.numberOfLines = 0
         instruction.textAlignment = .center
         instruction.textColor = .white
@@ -57,7 +57,7 @@ final class ESimScannerController: UIViewController, DataScannerViewControllerDe
         torchButton.tintColor = .white
         torchButton.backgroundColor = UIColor.black.withAlphaComponent(0.65)
         torchButton.layer.cornerRadius = 26
-        torchButton.accessibilityLabel = "Turn flashlight on"
+        torchButton.accessibilityLabel = "打开手电筒"
         torchButton.addTarget(self, action: #selector(toggleTorch), for: .touchUpInside)
         [frameView, instruction, torchButton].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; view.addSubview($0) }
         NSLayoutConstraint.activate([
@@ -73,7 +73,7 @@ final class ESimScannerController: UIViewController, DataScannerViewControllerDe
             guard let self, !self.stopped else { return }
             if allowed { self.configure() }
             else {
-                self.instruction.text = "Camera access is off. Allow it in Settings, or close this scanner to choose a photo or enter a code."
+                self.instruction.text = "相机访问已关闭。请在设置中允许，或关闭扫描器以选择照片或输入代码。"
                 self.frameView.isHidden = true
                 self.torchButton.isHidden = true
             }
@@ -103,7 +103,7 @@ final class ESimScannerController: UIViewController, DataScannerViewControllerDe
 
     private func configureFallback() {
         guard let device = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            instruction.text = "Camera unavailable. Close the scanner to choose a photo or enter a code."
+            instruction.text = "相机不可用。请关闭扫描器以选择照片或输入代码。"
             return
         }
         session.addInput(input)
@@ -134,7 +134,7 @@ final class ESimScannerController: UIViewController, DataScannerViewControllerDe
         let on = AVCaptureDevice.default(for: .video)?.isTorchActive != true
         setTorch(on)
         torchButton.setImage(UIImage(systemName: on ? "flashlight.on.fill" : "flashlight.off.fill"), for: .normal)
-        torchButton.accessibilityLabel = on ? "Turn flashlight off" : "Turn flashlight on"
+        torchButton.accessibilityLabel = on ? "关闭手电筒" : "打开手电筒"
     }
     private func setTorch(_ on: Bool) {
         guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else { return }

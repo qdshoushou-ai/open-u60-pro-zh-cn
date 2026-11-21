@@ -10,7 +10,7 @@ pub fn call(object: &str, method: &str, params: Option<&str>) -> Result<Value, S
     if let Some(p) = params {
         cmd.arg(p);
     }
-    let output = cmd.output().map_err(|e| format!("ubus exec: {e}"))?;
+    let output = cmd.output().map_err(|e| format!("ubus 执行失败：{e}"))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stderr = match stderr.find("\nUsage:") {
@@ -18,7 +18,7 @@ pub fn call(object: &str, method: &str, params: Option<&str>) -> Result<Value, S
             None => &stderr,
         };
         return Err(format!(
-            "ubus call {object} {method} failed: {}",
+            "ubus 调用 {object} {method} 失败：{}",
             stderr.trim()
         ));
     }
@@ -27,7 +27,7 @@ pub fn call(object: &str, method: &str, params: Option<&str>) -> Result<Value, S
     if trimmed.is_empty() {
         return Ok(Value::Null);
     }
-    serde_json::from_str(trimmed).map_err(|e| format!("ubus JSON parse: {e}"))
+    serde_json::from_str(trimmed).map_err(|e| format!("ubus JSON 解析失败：{e}"))
 }
 
 /// A deadline-limited call for a bounded handover transaction.
@@ -36,11 +36,11 @@ pub(crate) fn call_bounded(object: &str, method: &str, params: Option<&str>, sec
     let mut cmd = Command::new("ubus");
     cmd.args(["-t", &seconds.max(1).to_string(), "call", object, method]);
     if let Some(params) = params { cmd.arg(params); }
-    let output = cmd.output().map_err(|e| format!("ubus exec: {e}"))?;
-    if !output.status.success() { return Err(format!("bounded ubus {object} {method} failed")); }
+    let output = cmd.output().map_err(|e| format!("ubus 执行失败：{e}"))?;
+    if !output.status.success() { return Err(format!("受限 ubus 调用 {object} {method} 失败")); }
     let text = String::from_utf8_lossy(&output.stdout);
     if text.trim().is_empty() { Ok(Value::Null) }
-    else { serde_json::from_str(text.trim()).map_err(|e| format!("ubus JSON parse: {e}")) }
+    else { serde_json::from_str(text.trim()).map_err(|e| format!("ubus JSON 解析失败：{e}")) }
 }
 
 /// `ubus send <event> <payload>`: broadcasts an agent event to other processes on the router.
@@ -48,12 +48,12 @@ pub fn send(event: &str, payload: &Value) -> Result<(), String> {
     crate::httpd::gate::debug_assert_may_block();
     let output = send_command(event, payload)
         .output()
-        .map_err(|e| format!("ubus exec: {e}"))?;
+        .map_err(|e| format!("ubus 执行失败：{e}"))?;
     if output.status.success() {
         Ok(())
     } else {
         Err(format!(
-            "ubus send {event} failed: {}",
+            "ubus 发送事件 {event} 失败：{}",
             String::from_utf8_lossy(&output.stderr).trim()
         ))
     }
@@ -71,10 +71,10 @@ pub fn uci_get(key: &str) -> Result<String, String> {
     let output = Command::new("uci")
         .args(["get", key])
         .output()
-        .map_err(|e| format!("uci exec: {e}"))?;
+        .map_err(|e| format!("uci 执行失败：{e}"))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("uci get {key}: {stderr}"));
+        return Err(format!("uci 读取 {key} 失败：{stderr}"));
     }
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
@@ -86,9 +86,9 @@ pub fn uci_show(target: &str) -> Result<String, String> {
     let output = Command::new("uci")
         .args(["-q", "show", target])
         .output()
-        .map_err(|e| format!("uci exec: {e}"))?;
+        .map_err(|e| format!("uci 执行失败：{e}"))?;
     if !output.status.success() {
-        return Err(format!("uci show {target}: {}", output.status));
+        return Err(format!("uci 查看 {target} 失败：{}", output.status));
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
@@ -175,10 +175,10 @@ pub fn uci_set_no_commit(key: &str, value: &str) -> Result<(), String> {
     let set_out = Command::new("uci")
         .args(["set", &format!("{key}={value}")])
         .output()
-        .map_err(|e| format!("uci set: {e}"))?;
+        .map_err(|e| format!("uci 设置失败：{e}"))?;
     if !set_out.status.success() {
         return Err(format!(
-            "uci set {key}: {}",
+            "uci 设置 {key} 失败：{}",
             String::from_utf8_lossy(&set_out.stderr)
         ));
     }
@@ -191,10 +191,10 @@ pub fn uci_commit(config: &str) -> Result<(), String> {
     let commit_out = Command::new("uci")
         .args(["commit", config])
         .output()
-        .map_err(|e| format!("uci commit: {e}"))?;
+        .map_err(|e| format!("uci 提交失败：{e}"))?;
     if !commit_out.status.success() {
         return Err(format!(
-            "uci commit {config}: {}",
+            "uci 提交 {config} 失败：{}",
             String::from_utf8_lossy(&commit_out.stderr)
         ));
     }

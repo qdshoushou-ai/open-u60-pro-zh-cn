@@ -152,8 +152,8 @@ where
         // A new config each time it listens: a reset also drops every
         // resumable session (a client could otherwise resume one made
         // under the old CA without seeing the new certificate).
-        let bound = listen(tls.bind()).and_then(|l| Ok((l.local_addr()?, l))).map_err(|e| format!("Could not listen on {}: {e}", tls.bind()));
-        let ready = bound.and_then(|b| Ok((b, server_config(tls.keys()).ok_or("Could not set up TLS.")?)));
+        let bound = listen(tls.bind()).and_then(|l| Ok((l.local_addr()?, l))).map_err(|e| format!("无法监听 {}：{e}", tls.bind()));
+        let ready = bound.and_then(|b| Ok((b, server_config(tls.keys()).ok_or("无法设置 TLS。")?)));
         let ((addr, listener), config) = match ready {
             Ok(r) => r,
             Err(e) => {
@@ -182,7 +182,7 @@ where
         tls.stopped();
         if ended {
             eprintln!("[https] the listener on {addr} stopped");
-            tls.set_listening(Err(format!("The listener on {addr} stopped.")));
+            tls.set_listening(Err(format!("监听器 {addr} 已停止。")));
             if on.changed().await.is_err() {
                 return;
             }

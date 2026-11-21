@@ -18,7 +18,7 @@ export function DeviceSpecs() {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as const }}
         >
-          The Hardware
+          硬件规格
         </motion.h2>
         <motion.p
           className="mx-auto mb-14 max-w-xl text-center text-[0.875rem] text-text-dim text-pretty"
@@ -30,8 +30,8 @@ export function DeviceSpecs() {
             ease: [0.16, 1, 0.3, 1] as const,
           }}
         >
-          ZTE U60 Pro (MU5250) — a 5G-Advanced portable router with
-          Snapdragon X75 and a 10,000&nbsp;mAh battery.
+          ZTE U60 Pro（MU5250）—— 搭载 Qualcomm Snapdragon X75 与
+          10,000&nbsp;mAh 电池的 5G-Advanced 便携路由器。
         </motion.p>
 
         {/* Product image */}
@@ -48,7 +48,7 @@ export function DeviceSpecs() {
             <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-2xl border border-border bg-bg-card">
               <Image
                 src="/images/device/hero.jpg"
-                alt="ZTE U60 Pro 5G router"
+                alt="ZTE U60 Pro 5G 路由器"
                 fill
                 className="object-contain p-4"
                 sizes="(max-width: 768px) 100vw, 420px"

@@ -117,19 +117,19 @@ fn parse_method(s: &str) -> Option<crate::server::Method> {
 fn validate_time(s: &str) -> Result<(), String> {
     let parts: Vec<&str> = s.split(':').collect();
     if parts.len() != 2 {
-        return Err("time must be HH:MM".into());
+        return Err("时间必须为 HH:MM".into());
     }
     let h: u8 = parts[0]
         .parse()
-        .map_err(|_| "invalid hour".to_string())?;
+        .map_err(|_| "小时无效".to_string())?;
     let m: u8 = parts[1]
         .parse()
-        .map_err(|_| "invalid minute".to_string())?;
+        .map_err(|_| "分钟无效".to_string())?;
     if h > 23 {
-        return Err("hour must be 0-23".into());
+        return Err("小时必须为 0-23".into());
     }
     if m > 59 {
-        return Err("minute must be 0-59".into());
+        return Err("分钟必须为 0-59".into());
     }
     Ok(())
 }
@@ -140,39 +140,39 @@ fn validate_job(
     restore: &Option<Restore>,
 ) -> Result<(), String> {
     if !action.path.starts_with("/api/") {
-        return Err("action.path must start with /api/".into());
+        return Err("action.path 必须以 /api/ 开头".into());
     }
     if action.path.starts_with("/api/scheduler/") {
-        return Err("cannot schedule scheduler endpoints".into());
+        return Err("不能调度调度器端点".into());
     }
     if action.path.starts_with("/api/auth/") {
-        return Err("cannot schedule auth endpoints".into());
+        return Err("不能调度认证端点".into());
     }
     if matches!(
         action.path.as_str(),
         "/api/tailscale/setup" | "/api/tailscale/logout" | "/api/tailscale/update"
     ) {
         // A scheduled logout/update is a remote-lockout device
-        return Err("cannot schedule tailscale enrollment or maintenance endpoints".into());
+        return Err("不能调度 Tailscale 注册或维护端点".into());
     }
     if parse_method(&action.method).is_none() {
-        return Err("action.method must be GET, POST, PUT, or DELETE".into());
+        return Err("action.method 必须为 GET、POST、PUT 或 DELETE".into());
     }
     match schedule {
         Schedule::Recurring { time, days } => {
             validate_time(time)?;
             if days.is_empty() {
-                return Err("days must not be empty".into());
+                return Err("days 不能为空".into());
             }
             for &d in days {
                 if d > 6 {
-                    return Err("days must be 0-6 (Mon-Sun)".into());
+                    return Err("days 必须为 0-6（周一至周日）".into());
                 }
             }
         }
         Schedule::Once { at } => {
             if *at <= 1_000_000_000 {
-                return Err("once.at must be a valid unix timestamp".into());
+                return Err("once.at 必须为有效的 Unix 时间戳".into());
             }
         }
     }
@@ -381,7 +381,7 @@ struct CreateJobRequest {
 pub fn jobs_create(state: &AppState, body: &[u8]) -> (u16, Value) {
     let req: CreateJobRequest = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     if let Err(e) = validate_job(&req.action, &req.schedule, &req.restore) {
@@ -427,7 +427,7 @@ struct UpdateJobRequest {
 pub fn jobs_update(state: &AppState, body: &[u8]) -> (u16, Value) {
     let req: UpdateJobRequest = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的 JSON：{e}")})),
     };
 
     if let Err(e) = validate_job(&req.action, &req.schedule, &req.restore) {
@@ -437,7 +437,7 @@ pub fn jobs_update(state: &AppState, body: &[u8]) -> (u16, Value) {
     let mut data = state.scheduler.data.lock().unwrap();
     let job = match data.jobs.iter_mut().find(|j| j.id == req.id) {
         Some(j) => j,
-        None => return (404, json!({"ok": false, "error": "job not found"})),
+        None => return (404, json!({"ok": false, "error": "任务未找到"})),
     };
 
     job.name = req.name;
@@ -455,11 +455,11 @@ pub fn jobs_update(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn jobs_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let id = match parsed["id"].as_u64() {
         Some(id) => id as u32,
-        None => return (400, json!({"ok": false, "error": "missing 'id' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 id"})),
     };
 
     let mut data = state.scheduler.data.lock().unwrap();
@@ -467,7 +467,7 @@ pub fn jobs_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
     data.jobs.retain(|j| j.id != id);
 
     if data.jobs.len() == len_before {
-        return (404, json!({"ok": false, "error": "job not found"}));
+        return (404, json!({"ok": false, "error": "任务未找到"}));
     }
 
     save(&data);
@@ -478,21 +478,21 @@ pub fn jobs_delete(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn jobs_toggle(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let id = match parsed["id"].as_u64() {
         Some(id) => id as u32,
-        None => return (400, json!({"ok": false, "error": "missing 'id' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 id"})),
     };
     let enabled = match parsed["enabled"].as_bool() {
         Some(e) => e,
-        None => return (400, json!({"ok": false, "error": "missing 'enabled' field"})),
+        None => return (400, json!({"ok": false, "error": "缺少字段 enabled"})),
     };
 
     let mut data = state.scheduler.data.lock().unwrap();
     let job = match data.jobs.iter_mut().find(|j| j.id == id) {
         Some(j) => j,
-        None => return (404, json!({"ok": false, "error": "job not found"})),
+        None => return (404, json!({"ok": false, "error": "任务未找到"})),
     };
 
     job.enabled = enabled;

@@ -37,7 +37,7 @@ fn lane_loop(hub: &Hub, lane: Lane, readers: &dyn Readers) -> ! {
         // No hub lock is held while reading. A reader that panics (a handler
         // meeting a poisoned lock, say) is a failed read: the lane lives on.
         let out = panic::catch_unwind(AssertUnwindSafe(|| readers.read(t, hub)))
-            .unwrap_or_else(|_| Some(ReadOut { value: None, error: Some("internal error".into()) }));
+            .unwrap_or_else(|_| Some(ReadOut { value: None, error: Some("内部错误".into()) }));
         match out {
             Some(out) => hub.store(t, out, started),
             None => hub.read_skipped(t, started),

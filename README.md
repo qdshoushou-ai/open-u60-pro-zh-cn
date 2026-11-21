@@ -1,3 +1,5 @@
+> **Simplified-Chinese community fork.** This repository is a Chinese localization fork of [jesther-ai/open-u60-pro](https://github.com/jesther-ai/open-u60-pro) by [@jesther-ai](https://github.com/jesther-ai) (MIT). Original code and behaviour are unchanged; only Chinese localization and iOS build automation were added. See [FORK-NOTICE.zh-CN.md](FORK-NOTICE.zh-CN.md) and [README.zh-CN.md](README.zh-CN.md).
+
 <div align="center">
 
 <p><strong>iOS companion app</strong></p>

@@ -67,7 +67,7 @@ class SpeedTestViewModel @Inject constructor(
                 )
             } catch (e: AgentError.Unauthorized) {
                 authManager.reauthenticate()
-                setError("Session expired — please try again")
+                setError("会话已过期，请重试")
             } catch (e: Exception) {
                 setError(e.message)
             }
@@ -132,23 +132,23 @@ class SpeedTestViewModel @Inject constructor(
                     if (phase in listOf("complete", "cancelled", "error")) break
                 }
                 if (pollCount >= 300) {
-                    setError("Speed test timed out")
+                    setError("测速超时")
                     return@launch
                 }
                 val finalPhase = _state.value.phase
                 _state.value = _state.value.copy(
                     isLoading = false,
                     message = when (finalPhase) {
-                        "complete" -> "Speed test complete"
-                        "cancelled" -> "Speed test cancelled"
-                        "error" -> _state.value.error ?: "Speed test failed"
+                        "complete" -> "测速完成"
+                        "cancelled" -> "测速已取消"
+                        "error" -> _state.value.error ?: "测速失败"
                         else -> null
                     },
                     messageIsError = finalPhase == "error",
                 )
             } catch (e: AgentError.Unauthorized) {
                 authManager.reauthenticate()
-                setError("Session expired — please try again")
+                setError("会话已过期，请重试")
             } catch (e: Exception) {
                 setError(e.message)
             }
@@ -161,7 +161,7 @@ class SpeedTestViewModel @Inject constructor(
                 agentClient.postJSON("/api/speedtest/stop")
             } catch (e: AgentError.Unauthorized) {
                 authManager.reauthenticate()
-                setError("Session expired — please try again")
+                setError("会话已过期，请重试")
             } catch (e: Exception) {
                 setError(e.message)
             }
@@ -172,7 +172,7 @@ class SpeedTestViewModel @Inject constructor(
         _state.value = _state.value.copy(
             isLoading = false,
             phase = "idle",
-            message = msg ?: "Unknown error",
+            message = msg ?: "未知错误",
             messageIsError = true,
         )
     }

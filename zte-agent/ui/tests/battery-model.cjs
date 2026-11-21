@@ -14,9 +14,9 @@ delete p.supplies.data.battery.time_to_full_now;b=M.parse(p);assert.equal(b.full
 p.supplies.data.battery.status='Discharging';p.supplies.data.battery.current_now=-500000;p.firmware.data.battery_time_to_empty=120;
 b=M.parse(p);assert.equal(b.power,2.2);assert.equal(b.full.applicable,false);assert.equal(b.empty.seconds,7200);
 p.supplies.data.battery.status='Not charging';p.control.data.charging_stopped=true;b=M.parse(p);assert.equal(b.full.applicable,false);assert.equal(b.empty.applicable,false);assert.equal(b.stopped,true);
-p.supplies.data.battery.status='Full';b=M.parse(p);assert.equal(M.duration(b.full.seconds),'Fully charged');
-p=fixture();p.supplies.data.battery.time_to_full_now=-1;p.firmware.data.battery_time_to_full=-1;b=M.parse(p);assert.equal(b.full.seconds,null);assert.equal(M.duration(b.full.seconds),'Not reported');
+p.supplies.data.battery.status='Full';b=M.parse(p);assert.equal(M.duration(b.full.seconds),'已充满');
+p=fixture();p.supplies.data.battery.time_to_full_now=-1;p.firmware.data.battery_time_to_full=-1;b=M.parse(p);assert.equal(b.full.seconds,null);assert.equal(M.duration(b.full.seconds),'未上报');
 p=fixture();p.supplies.data.battery.capacity=255;p.supplies.data.battery.temp='';p.supplies.data.battery.voltage_now=null;p.supplies.data.battery.current_now='';b=M.parse(p);assert.equal(b.capacity,null);assert.equal(b.temperature,null);assert.equal(b.power,null);
 p.supplies={ok:false};b=M.parse(p);assert.equal(b.partial,true);assert.equal(b.power,null);
-assert.equal(M.parse().cycles,null);assert.equal(M.duration(-1),'Not reported');assert.equal(M.duration(90061),'1d 1h 2m');
+assert.equal(M.parse().cycles,null);assert.equal(M.duration(-1),'未上报');assert.equal(M.duration(90061),'1d 1h 2m');
 console.log('Passed: battery/USB power units, inconsistent driver readings, ETA source units and states, missing/sentinel values, zero cycles, temperature, USB negotiation and capacity ratio.');

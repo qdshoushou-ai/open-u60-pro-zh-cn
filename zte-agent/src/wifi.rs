@@ -183,9 +183,9 @@ pub(crate) fn reconnect_clients_for_dns_refresh() -> Result<ClientReconnect, Str
     let devices = Command::new("iw")
         .arg("dev")
         .output()
-        .map_err(|error| format!("list Wi-Fi interfaces: {error}"))?;
+        .map_err(|error| format!("列出 Wi-Fi 接口失败：{error}"))?;
     if !devices.status.success() {
-        return Err("list Wi-Fi interfaces: iw failed".into());
+        return Err("列出 Wi-Fi 接口失败：iw 执行失败".into());
     }
 
     let mut result = ClientReconnect::default();
@@ -322,11 +322,11 @@ pub fn wifi_status(_state: &AppState) -> (u16, Value) {
 pub fn wifi_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let obj = match parsed.as_object() {
         Some(o) => o,
-        None => return (400, json!({"ok": false, "error": "expected JSON object"})),
+        None => return (400, json!({"ok": false, "error": "应为 JSON 对象"})),
     };
 
     let uci_map: &[(&str, &str)] = &[
@@ -497,11 +497,11 @@ pub fn guest_status(_state: &AppState) -> (u16, Value) {
 pub fn guest_set(_state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let obj = match parsed.as_object() {
         Some(o) => o,
-        None => return (400, json!({"ok": false, "error": "expected JSON object"})),
+        None => return (400, json!({"ok": false, "error": "应为 JSON 对象"})),
     };
 
     let guest_map: &[(&str, &[&str])] = &[

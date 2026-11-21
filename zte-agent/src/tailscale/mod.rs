@@ -103,10 +103,10 @@ fn run_with_timeout(mut cmd: Command, timeout_secs: u64) -> Result<std::process:
         let _ = tx.send(child.wait_with_output());
     });
     match rx.recv_timeout(Duration::from_secs(timeout_secs)) {
-        Ok(result) => result.map_err(|e| format!("wait: {e}")),
+        Ok(result) => result.map_err(|e| format!("等待失败：{e}")),
         Err(_) => {
             unsafe { libc::kill(pid as i32, libc::SIGKILL) };
-            Err(format!("timed out after {timeout_secs}s"))
+            Err(format!("超时（{timeout_secs} 秒）"))
         }
     }
 }
@@ -128,7 +128,7 @@ fn cli(args: &[&str], timeout_secs: u64) -> Result<String, String> {
 
 fn cli_json(args: &[&str], timeout_secs: u64) -> Result<Value, String> {
     let stdout = cli(args, timeout_secs)?;
-    serde_json::from_str(stdout.trim()).map_err(|e| format!("parse tailscale JSON: {e}"))
+    serde_json::from_str(stdout.trim()).map_err(|e| format!("解析 Tailscale JSON 失败：{e}"))
 }
 
 #[derive(Debug)]
@@ -153,7 +153,7 @@ fn localapi_status_at(sock: &Path, timeout_secs: u64) -> Result<Value, LocalApiE
     let timeout = Duration::from_secs(timeout_secs.max(1));
     let deadline = Instant::now() + timeout;
     let mut stream = UnixStream::connect(sock)
-        .map_err(|e| LocalApiError::Other(format!("connect {}: {e}", sock.display())))?;
+        .map_err(|e| LocalApiError::Other(format!("连接 {} 失败：{e}", sock.display())))?;
     stream.set_write_timeout(Some(timeout)).map_err(io_err)?;
     // Armed once, up front: tailscaled answers and closes in one go, and
     // setsockopt on a socket whose peer has already closed fails (EINVAL on
@@ -172,7 +172,7 @@ fn localapi_status_at(sock: &Path, timeout_secs: u64) -> Result<Value, LocalApiE
                 raw.extend_from_slice(&buf[..n]);
                 if raw.len() > LOCALAPI_MAX_BYTES {
                     return Err(LocalApiError::Other(format!(
-                        "response over {LOCALAPI_MAX_BYTES} bytes"
+                        "响应超过 {LOCALAPI_MAX_BYTES} 字节"
                     )));
                 }
                 if Instant::now() >= deadline {
@@ -200,7 +200,7 @@ fn parse_localapi_response(raw: &[u8]) -> Result<Value, String> {
                 None
             }
         })
-        .ok_or_else(|| "incomplete HTTP response (no end of headers)".to_string())?;
+        .ok_or_else(|| "HTTP 响应不完整（缺少头部结束标记）".to_string())?;
     let head = String::from_utf8_lossy(&raw[..head_len]);
     let body = &raw[head_len + sep_len..];
     let mut lines = head.lines();
@@ -209,22 +209,22 @@ fn parse_localapi_response(raw: &[u8]) -> Result<Value, String> {
     let version = parts.next().unwrap_or("");
     let code = parts.next().unwrap_or("");
     if !version.starts_with("HTTP/1.") {
-        return Err(format!("not an HTTP response: {status_line:?}"));
+        return Err(format!("不是 HTTP 响应：{status_line:?}"));
     }
     if code != "200" {
         let text = String::from_utf8_lossy(body);
-        return Err(format!("{status_line}: {}", text.trim()));
+        return Err(format!("{status_line}：{}", text.trim()));
     }
     for line in lines {
         if let Some((name, value)) = line.split_once(':') {
             if name.trim().eq_ignore_ascii_case("transfer-encoding")
                 && value.trim().eq_ignore_ascii_case("chunked")
             {
-                return Err("chunked localapi response".into());
+                return Err("分块的 localapi 响应".into());
             }
         }
     }
-    serde_json::from_slice(body).map_err(|e| format!("parse localapi JSON: {e}"))
+    serde_json::from_slice(body).map_err(|e| format!("解析 localapi JSON 失败：{e}"))
 }
 
 /// `tailscale status --json --peers=false` without the fork: LocalAPI first,
@@ -234,7 +234,7 @@ fn parse_localapi_response(raw: &[u8]) -> Result<Value, String> {
 fn daemon_status(timeout_secs: u64) -> Result<Value, String> {
     let reason = match localapi_status(timeout_secs) {
         Ok(v) => return Ok(v),
-        Err(LocalApiError::Timeout) => return Err(format!("timed out after {timeout_secs}s")),
+        Err(LocalApiError::Timeout) => return Err(format!("超时（{timeout_secs} 秒）")),
         Err(LocalApiError::Other(e)) => e,
     };
     let result = cli_json(&["status", "--json", "--peers=false"], timeout_secs);
@@ -949,10 +949,10 @@ impl TailscaleManager {
 
     fn ensure_daemon_ready(self: &Arc<Self>, wait_secs: u64) -> Result<(), String> {
         if !installed() {
-            return Err("tailscale is not installed — POST /api/tailscale/update first".into());
+            return Err("Tailscale 未安装——请先 POST /api/tailscale/update".into());
         }
         if self.updating.load(Ordering::SeqCst) {
-            return Err("update in progress".into());
+            return Err("更新正在进行".into());
         }
         self.running.store(true, Ordering::SeqCst);
         self.ensure_supervisor();
@@ -963,7 +963,7 @@ impl TailscaleManager {
             }
             thread::sleep(Duration::from_secs(1));
         }
-        Err("tailscaled did not become ready in time — check /api/tailscale/status".into())
+        Err("tailscaled 未及时就绪——请检查 /api/tailscale/status".into())
     }
 
     /// Non-blocking: flags the desired state and returns. The supervisor
@@ -972,10 +972,10 @@ impl TailscaleManager {
     /// WantRunning=false). Track progress via GET /api/tailscale/status.
     pub fn do_enable(self: &Arc<Self>) -> Result<(), String> {
         if !installed() {
-            return Err("tailscale is not installed — POST /api/tailscale/update first".into());
+            return Err("Tailscale 未安装——请先 POST /api/tailscale/update".into());
         }
         if self.updating.load(Ordering::SeqCst) {
-            return Err("update in progress".into());
+            return Err("更新正在进行".into());
         }
         let hold = {
             let mut cfg = self.config.lock().unwrap();
@@ -1100,7 +1100,7 @@ fn require_password(state: &AppState) -> Option<(u16, Value)> {
     } else {
         Some((
             403,
-            json!({"ok": false, "error": "set an agent password (ZTE_AGENT_PASSWORD) before enabling remote access"}),
+            json!({"ok": false, "error": "启用远程访问前请先设置 Agent 密码（ZTE_AGENT_PASSWORD）"}),
         ))
     }
 }
@@ -1129,23 +1129,23 @@ pub fn setup(state: &AppState, body: &[u8]) -> (u16, Value) {
     }
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let key = match parsed["auth_key"].as_str() {
         Some(k) if !k.trim().is_empty() => k.trim().to_string(),
-        _ => return (400, json!({"ok": false, "error": "missing 'auth_key' field"})),
+        _ => return (400, json!({"ok": false, "error": "缺少字段 auth_key"})),
     };
     if mgr.updating.load(Ordering::SeqCst) {
-        return (409, json!({"ok": false, "error": "update in progress"}));
+        return (409, json!({"ok": false, "error": "更新正在进行"}));
     }
     if mgr.login_in_progress.load(Ordering::SeqCst) {
-        return (409, json!({"ok": false, "error": "interactive login in progress"}));
+        return (409, json!({"ok": false, "error": "交互式登录正在进行"}));
     }
 
     if state_file_exists() {
         let current = mgr.refresh_status();
         if current["backend_state"].as_str() == Some("Running") {
-            return (409, json!({"ok": false, "error": "already enrolled — logout first to re-enroll"}));
+            return (409, json!({"ok": false, "error": "已注册——请先退出登录再重新注册"}));
         }
     }
 
@@ -1168,10 +1168,10 @@ pub fn setup(state: &AppState, body: &[u8]) -> (u16, Value) {
             Ok(mut f) => {
                 if f.write_all(key.as_bytes()).is_err() {
                     let _ = std::fs::remove_file(&keyfile);
-                    return (500, json!({"ok": false, "error": "failed to write auth key"}));
+                    return (500, json!({"ok": false, "error": "写入认证密钥失败"}));
                 }
             }
-            Err(e) => return (500, json!({"ok": false, "error": format!("write auth key: {e}")})),
+            Err(e) => return (500, json!({"ok": false, "error": format!("写入认证密钥失败：{e}")})),
         }
     }
 
@@ -1188,7 +1188,7 @@ pub fn setup(state: &AppState, body: &[u8]) -> (u16, Value) {
             let payload = mgr.refresh_status();
             (200, json!({"ok": true, "data": payload}))
         }
-        Err(e) => (502, json!({"ok": false, "error": format!("tailscale up: {e}")})),
+        Err(e) => (502, json!({"ok": false, "error": format!("tailscale up 失败：{e}")})),
     }
 }
 
@@ -1200,12 +1200,12 @@ pub fn login_url(state: &AppState) -> (u16, Value) {
         return resp;
     }
     if mgr.updating.load(Ordering::SeqCst) {
-        return (409, json!({"ok": false, "error": "update in progress"}));
+        return (409, json!({"ok": false, "error": "更新正在进行"}));
     }
     {
         let cfg = mgr.config.lock().unwrap().clone();
         if cfg.enrolled && !cfg.enabled {
-            return (409, json!({"ok": false, "error": "tailscale is disabled — POST /api/tailscale/enable first"}));
+            return (409, json!({"ok": false, "error": "Tailscale 已停用——请先 POST /api/tailscale/enable"}));
         }
     }
     if let Err(e) = mgr.ensure_daemon_ready(30) {
@@ -1214,7 +1214,7 @@ pub fn login_url(state: &AppState) -> (u16, Value) {
 
     let current = mgr.refresh_status();
     if current["backend_state"].as_str() == Some("Running") {
-        return (409, json!({"ok": false, "error": "already enrolled"}));
+        return (409, json!({"ok": false, "error": "已注册"}));
     }
     if let Some(url) = current["login_url"].as_str() {
         if !url.is_empty() {
@@ -1287,7 +1287,7 @@ pub fn config_set(state: &AppState, body: &[u8]) -> (u16, Value) {
     let mgr = &state.tailscale;
     let patch: config::TsConfigPatch = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(e) => return (400, json!({"ok": false, "error": format!("invalid config JSON: {e}")})),
+        Err(e) => return (400, json!({"ok": false, "error": format!("无效的配置 JSON：{e}")})),
     };
 
     // Apply to a candidate first; persist only after the daemon accepted it
@@ -1302,7 +1302,7 @@ pub fn config_set(state: &AppState, body: &[u8]) -> (u16, Value) {
         let args = pref_args_for(&candidate, "set");
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
         if let Err(e) = cli(&arg_refs, CLI_TIMEOUT_SECS) {
-            return (502, json!({"ok": false, "error": format!("tailscale set: {e}")}));
+            return (502, json!({"ok": false, "error": format!("tailscale set 失败：{e}")}));
         }
     }
 
@@ -1330,7 +1330,7 @@ pub fn config_set(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn logout(state: &AppState) -> (u16, Value) {
     let mgr = &state.tailscale;
     if mgr.updating.load(Ordering::SeqCst) {
-        return (409, json!({"ok": false, "error": "update in progress"}));
+        return (409, json!({"ok": false, "error": "更新正在进行"}));
     }
 
     // The node key lives server-side too — start the daemon if needed so
@@ -1343,12 +1343,12 @@ pub fn logout(state: &AppState) -> (u16, Value) {
         if mgr.child_pid.lock().unwrap().is_some() {
             if let Err(e) = cli(&["logout"], 30) {
                 warning = Some(format!(
-                    "tailscale logout failed ({e}) — remove this machine in the admin console"
+                    "tailscale 退出登录失败（{e}）——请在管理控制台中移除此设备"
                 ));
             }
         } else {
             warning = Some(
-                "daemon unavailable — node key not invalidated; remove this machine in the admin console"
+                "守护进程不可用——节点密钥未失效；请在管理控制台中移除此设备"
                     .to_string(),
             );
         }
@@ -1376,15 +1376,15 @@ pub fn update(state: &AppState, body: &[u8]) -> (u16, Value) {
     let mgr = &state.tailscale;
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return (400, json!({"ok": false, "error": "invalid JSON"})),
+        Err(_) => return (400, json!({"ok": false, "error": "无效的 JSON"})),
     };
     let version = match parsed["version"].as_str() {
         Some(v) if !v.is_empty() && v.chars().all(|c| c.is_ascii_digit() || c == '.') => v.to_string(),
-        _ => return (400, json!({"ok": false, "error": "missing or invalid 'version'"})),
+        _ => return (400, json!({"ok": false, "error": "version 缺失或无效"})),
     };
     let sha256 = match parsed["sha256"].as_str() {
         Some(s) if s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()) => s.to_lowercase(),
-        _ => return (400, json!({"ok": false, "error": "missing or invalid 'sha256' (64 hex chars)"})),
+        _ => return (400, json!({"ok": false, "error": "sha256 缺失或无效（需为 64 个十六进制字符）"})),
     };
 
     if mgr
@@ -1392,7 +1392,7 @@ pub fn update(state: &AppState, body: &[u8]) -> (u16, Value) {
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
-        return (409, json!({"ok": false, "error": "update already in progress"}));
+        return (409, json!({"ok": false, "error": "更新已在进行中"}));
     }
     // Refresh so clients polling /status see "updating" immediately (the
     // cache is otherwise served for up to 10s)
@@ -1445,38 +1445,38 @@ fn run_update_inner(
         .timeout_global(Some(Duration::from_secs(600)))
         .build()
         .into();
-    let resp = agent.get(&url).call().map_err(|e| format!("download {url}: {e}"))?;
+    let resp = agent.get(&url).call().map_err(|e| format!("下载 {url} 失败：{e}"))?;
     let mut reader = resp.into_body().into_reader().take(120 * 1024 * 1024);
-    let mut out = std::fs::File::create(tgz_path).map_err(|e| format!("create {tgz_path}: {e}"))?;
-    std::io::copy(&mut reader, &mut out).map_err(|e| format!("download stream: {e}"))?;
+    let mut out = std::fs::File::create(tgz_path).map_err(|e| format!("创建 {tgz_path} 失败：{e}"))?;
+    std::io::copy(&mut reader, &mut out).map_err(|e| format!("下载流失败：{e}"))?;
     drop(out);
 
     // 2. Verify sha256
     let actual = sha256_file(tgz_path)?;
     if actual != sha256 {
-        return Err(format!("sha256 mismatch: expected {sha256}, got {actual}"));
+        return Err(format!("SHA-256 不匹配：应为 {sha256}，实际为 {actual}"));
     }
 
     // 3. Extract via busybox tar
     let _ = std::fs::remove_dir_all(extract_dir);
-    std::fs::create_dir_all(extract_dir).map_err(|e| format!("mkdir {extract_dir}: {e}"))?;
+    std::fs::create_dir_all(extract_dir).map_err(|e| format!("创建目录 {extract_dir} 失败：{e}"))?;
     let mut tar = Command::new("tar");
     tar.args(["-xzf", tgz_path, "-C", extract_dir]);
     let out = run_with_timeout(tar, 120)?;
     if !out.status.success() {
-        return Err(format!("tar extract failed: {}", String::from_utf8_lossy(&out.stderr)));
+        return Err(format!("解压 tar 失败：{}", String::from_utf8_lossy(&out.stderr)));
     }
     let src_dir = format!("{extract_dir}/tailscale_{version}_arm64");
 
     // 4. Stage new binaries next to the current ones (same filesystem for
     //    atomic rename) and smoke-test before touching the live install.
-    std::fs::create_dir_all(BIN_DIR).map_err(|e| format!("mkdir {BIN_DIR}: {e}"))?;
+    std::fs::create_dir_all(BIN_DIR).map_err(|e| format!("创建目录 {BIN_DIR} 失败：{e}"))?;
     for name in ["tailscaled", "tailscale"] {
         let src = format!("{src_dir}/{name}");
         let staged = format!("{BIN_DIR}/{name}.new");
-        std::fs::copy(&src, &staged).map_err(|e| format!("stage {name}: {e}"))?;
+        std::fs::copy(&src, &staged).map_err(|e| format!("暂存 {name} 失败：{e}"))?;
         std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755))
-            .map_err(|e| format!("chmod {name}: {e}"))?;
+            .map_err(|e| format!("设置 {name} 权限失败：{e}"))?;
     }
     let _ = std::fs::remove_file(tgz_path);
     let _ = std::fs::remove_dir_all(extract_dir);
@@ -1485,7 +1485,7 @@ fn run_update_inner(
     smoke.arg("--version");
     let smoke_out = run_with_timeout(smoke, 15)?;
     if !smoke_out.status.success() {
-        return Err("staged tailscaled failed --version smoke test".into());
+        return Err("暂存的 tailscaled 未通过 --version 冒烟测试".into());
     }
 
     // 5. Quiesce the supervisor — a real handshake, not a best-effort wait:
@@ -1495,7 +1495,7 @@ fn run_update_inner(
     let enrolled = mgr.config.lock().unwrap().enrolled;
     if !mgr.quiesce_supervisor() {
         mgr.resume_supervisor();
-        return Err("supervisor did not quiesce — update aborted".into());
+        return Err("监督程序未停止——更新已中止".into());
     }
 
     let swap = || -> Result<(), String> {
@@ -1504,9 +1504,9 @@ fn run_update_inner(
             let prev = format!("{current}.prev");
             let staged = format!("{current}.new");
             if Path::new(&current).exists() {
-                std::fs::rename(&current, &prev).map_err(|e| format!("backup {name}: {e}"))?;
+                std::fs::rename(&current, &prev).map_err(|e| format!("备份 {name} 失败：{e}"))?;
             }
-            std::fs::rename(&staged, &current).map_err(|e| format!("install {name}: {e}"))?;
+            std::fs::rename(&staged, &current).map_err(|e| format!("安装 {name} 失败：{e}"))?;
         }
         Ok(())
     };
@@ -1547,13 +1547,13 @@ fn run_update_inner(
             if !mgr.quiesce_supervisor() {
                 mgr.resume_supervisor();
                 return Err(
-                    "updated tailscaled unhealthy and supervisor did not quiesce for rollback — manual intervention needed"
+                    "更新后的 tailscaled 不健康，且监督程序未停止以执行回滚——需要人工干预"
                         .into(),
                 );
             }
             rollback();
             mgr.resume_supervisor();
-            return Err("updated tailscaled did not reach Running in 120s — rolled back".into());
+            return Err("更新后的 tailscaled 未在 120 秒内进入 Running 状态——已回滚".into());
         }
     }
 
@@ -1565,11 +1565,11 @@ fn run_update_inner(
 
 fn sha256_file(path: &str) -> Result<String, String> {
     use sha2::{Digest, Sha256};
-    let mut file = std::fs::File::open(path).map_err(|e| format!("open {path}: {e}"))?;
+    let mut file = std::fs::File::open(path).map_err(|e| format!("打开 {path} 失败：{e}"))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 64 * 1024];
     loop {
-        let n = file.read(&mut buf).map_err(|e| format!("read {path}: {e}"))?;
+        let n = file.read(&mut buf).map_err(|e| format!("读取 {path} 失败：{e}"))?;
         if n == 0 {
             break;
         }
@@ -1664,21 +1664,21 @@ mod tests {
         assert!(
             parse_localapi_response(b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n")
                 .unwrap_err()
-                .contains("incomplete")
+                .contains("不完整")
         );
         assert!(
             parse_localapi_response(b"HTTP/1.0 200 OK\r\n\r\n{\"Backend")
                 .unwrap_err()
-                .contains("parse localapi JSON")
+                .contains("解析 localapi JSON")
         );
         let chunked = format!("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n{STATUS_BODY}");
         assert!(parse_localapi_response(chunked.as_bytes())
             .unwrap_err()
-            .contains("chunked"));
+            .contains("分块"));
         assert!(parse_localapi_response(b"").is_err());
         assert!(parse_localapi_response(b"garbage\r\n\r\n{}")
             .unwrap_err()
-            .contains("not an HTTP response"));
+            .contains("不是 HTTP 响应"));
     }
 
     fn sock_path(name: &str) -> PathBuf {

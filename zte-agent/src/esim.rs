@@ -531,11 +531,11 @@ fn file_lock(path: &Path) -> Result<Option<std::fs::File>, ()> {
 }
 
 fn busy() -> (u16, Value) {
-    error(409, "eSIM manager busy; retry shortly")
+    error(409, "eSIM 管理器繁忙，请稍后重试")
 }
 
 fn reloading_reply() -> (u16, Value) {
-    error(409, "the SIM is still reloading after the last switch; try again in a moment")
+    error(409, "上次切换后 SIM 仍在重新加载，请稍后再试")
 }
 
 /// A failed card read: `euicc_init` / channel-open failures mean the eUICC's management
@@ -815,25 +815,25 @@ fn check_card(inner: &Arc<Inner>) -> Result<Value, (u16, Value)> {
     let eid = data["eidValue"].as_str().unwrap_or("");
     if inner.inventory.lock().unwrap().note_card(eid) {
         eprintln!("[esim] a different eSIM card is in the slot; saved list dropped");
-        return Err(error(409, "a different eSIM card is in the slot; reload the profile list"));
+        return Err(error(409, "插槽中的 eSIM 卡已更换，请重新加载配置列表"));
     }
     Ok(data)
 }
 
 /// Parses `{"iccid": "..."}` for the mutating profile actions.
 fn iccid_body(body: &[u8]) -> Result<String, (u16, Value)> {
-    let parsed: Value = serde_json::from_slice(body).map_err(|_| error(400, "invalid JSON"))?;
+    let parsed: Value = serde_json::from_slice(body).map_err(|_| error(400, "无效的 JSON"))?;
     parsed["iccid"]
         .as_str()
         .and_then(normalize_iccid)
-        .ok_or_else(|| error(400, "iccid must be 18–20 digits"))
+        .ok_or_else(|| error(400, "ICCID 必须为 18–20 位数字"))
 }
 
 /// POST /api/esim/enable — body `{"iccid": "..."}`. Switches the enabled profile; the WAN drops
 /// while the modem reattaches with the new one.
 pub fn enable(state: &AppState, body: &[u8]) -> (u16, Value) {
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     let iccid = match iccid_body(body) {
         Ok(i) => i,
@@ -843,14 +843,14 @@ pub fn enable(state: &AppState, body: &[u8]) -> (u16, Value) {
         return reloading_reply();
     }
     if state.esim.inner.switch.lock().unwrap().state == "card_busy" {
-        return error(409, "the router is still retrying the last switch while the eSIM is busy");
+        return error(409, "eSIM 繁忙时路由器仍在重试上次切换");
     }
     let mode = crate::ubus::uci_get("zte_nwinfo.sys_info.operate_mode").ok();
     let policy = state.oos_policy.status();
     if radio_blocks_switch(mode.as_deref(), policy["state"].as_str()) {
         return error(
             409,
-            "the modem is in airplane / low-power mode; turn it back on before switching profiles",
+            "调制解调器处于飞行模式／低功耗模式，切换配置前请先恢复",
         );
     }
     let Some(guard) = state.esim.acquire() else {
@@ -900,7 +900,7 @@ pub fn enable(state: &AppState, body: &[u8]) -> (u16, Value) {
         previous: previous.clone(),
         generation,
         started_at: now,
-        note: result.as_ref().err().map(|e| format!("enable error: {}", e.message())),
+        note: result.as_ref().err().map(|e| format!("启用失败：{}", e.message())),
         network_policy,
         network_check: "waiting",
         ..Switch::default()
@@ -938,7 +938,7 @@ pub fn enable(state: &AppState, body: &[u8]) -> (u16, Value) {
             eprintln!("[esim] enable {} uncertain: {}", mask(&iccid), e.message());
             let (status, mut body) = e.reply();
             body["outcome"] = json!("unknown");
-            body["hint"] = json!("the agent is checking whether the switch happened: GET /api/esim/switch");
+            body["hint"] = json!("Agent 正在检查切换是否发生：GET /api/esim/switch");
             (status, body)
         }
     }
@@ -976,7 +976,7 @@ fn retry_while_busy(
         previous: previous.clone(),
         generation,
         started_at: now,
-        note: Some(format!("the eSIM refused while busy ({message}); retrying")),
+        note: Some(format!("eSIM 繁忙时拒绝（{message}）；正在重试")),
         network_policy,
         network_check: "waiting",
         ..Switch::default()
@@ -1034,7 +1034,7 @@ fn retry_enable(
             return; // another switch took over
         }
         let note = match result {
-            Ok(_) => format!("the eSIM was busy; switched on attempt {attempt}"),
+            Ok(_) => format!("eSIM 繁忙，已在第 {attempt} 次尝试时切换"),
             Err(CardError::NotStarted(m)) => {
                 identity.agent_switch_disarm();
                 last = m;
@@ -1045,7 +1045,7 @@ fn retry_enable(
                 last = e.message();
                 continue;
             }
-            Err(e) => format!("enable error: {}", e.message()),
+            Err(e) => format!("启用失败：{}", e.message()),
         };
         inner.inventory.lock().unwrap().reloading = true;
         inner.switched_at.store(mono_secs(), Ordering::Relaxed);
@@ -1065,7 +1065,7 @@ fn retry_enable(
         return;
     }
     sw.reason = Some("card_busy");
-    sw.note = Some(format!("the eSIM stayed busy for {} s ({last})", CARD_BUSY_LIMIT.as_secs()));
+    sw.note = Some(format!("eSIM 持续繁忙 {} 秒（{last}）", CARD_BUSY_LIMIT.as_secs()));
     sw.finish("not_applied", unix_now());
     eprintln!("[esim] switch to {} not applied: the eSIM stayed busy", mask(&target));
 }
@@ -1083,7 +1083,7 @@ fn verify_switch(inner: Arc<Inner>, target: String, generation: u64) {
     let started = Instant::now();
     std::thread::sleep(RELOAD_SETTLE);
     let mut list = None;
-    let mut last_error = String::from("the SIM did not report ready");
+    let mut last_error = String::from("SIM 未报告就绪");
     while started.elapsed() < CARD_CONFIRM_LIMIT {
         if !current(&inner, generation) {
             return;
@@ -1391,7 +1391,7 @@ pub(crate) fn same_iccid(a: &str, b: &str) -> bool {
 /// POST /api/esim/delete — body `{"iccid": "..."}`. Permanently removes a disabled profile.
 pub fn delete(state: &AppState, body: &[u8]) -> (u16, Value) {
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     let iccid = match iccid_body(body) {
         Ok(i) => i,
@@ -1435,11 +1435,11 @@ pub fn delete(state: &AppState, body: &[u8]) -> (u16, Value) {
 /// Starts the download in the background (it can take a minute); poll GET /api/esim/download.
 pub fn download_start(state: &AppState, body: &[u8]) -> (u16, Value) {
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return error(400, "invalid JSON"),
+        Err(_) => return error(400, "无效的 JSON"),
     };
     let code = parsed["activation_code"].as_str().unwrap_or("").trim();
     let preview = parsed["preview"].as_bool().unwrap_or(true);
@@ -1453,10 +1453,10 @@ pub fn download_start(state: &AppState, body: &[u8]) -> (u16, Value) {
     };
     if let Some(c) = confirmation {
         if c.len() > 64 || c.chars().any(|ch| ch.is_control()) {
-            return error(400, "confirmation code is too long or contains control characters");
+            return error(400, "确认码过长或包含控制字符");
         }
     } else if needs_confirmation {
-        return error(400, "this activation code needs a confirmation code from the operator");
+        return error(400, "此激活码需要运营商提供的确认码");
     }
     if state.esim.reloading() {
         return reloading_reply();
@@ -1464,7 +1464,7 @@ pub fn download_start(state: &AppState, body: &[u8]) -> (u16, Value) {
     if !data_connected() {
         return error(
             409,
-            "the router has no mobile data connection; downloads use the router's own internet",
+            "路由器没有移动数据连接；下载将使用路由器自身的网络",
         );
     }
     let Some(guard) = state.esim.acquire() else {
@@ -1537,8 +1537,8 @@ pub fn download_start(state: &AppState, body: &[u8]) -> (u16, Value) {
     if spawned.is_err() {
         let mut d = state.esim.inner.download.lock().unwrap();
         d.state = "failed";
-        d.error = Some("cannot start the download thread".into());
-        return error(503, "cannot start the download thread");
+        d.error = Some("无法启动下载线程".into());
+        return error(503, "无法启动下载线程");
     }
     let mut view = state.esim.inner.download.lock().unwrap().view();
     view["free_nvm_bytes"] = free_nvm;
@@ -1549,10 +1549,10 @@ pub fn download_start(state: &AppState, body: &[u8]) -> (u16, Value) {
 pub fn download_confirm(state: &AppState, body: &[u8]) -> (u16, Value) {
     let parsed: Value = match serde_json::from_slice(body) {
         Ok(v) => v,
-        Err(_) => return error(400, "invalid JSON"),
+        Err(_) => return error(400, "无效的 JSON"),
     };
     let Some(accept) = parsed["accept"].as_bool() else {
-        return error(400, "accept must be true or false");
+        return error(400, "accept 必须为 true 或 false");
     };
     let inner = &state.esim.inner;
     let mut d = inner.download.lock().unwrap();
@@ -1560,10 +1560,10 @@ pub fn download_confirm(state: &AppState, body: &[u8]) -> (u16, Value) {
         return reply;
     }
     if d.state != "confirm" {
-        return error(409, "no download is waiting for confirmation");
+        return error(409, "没有等待确认的下载");
     }
     if !inner.control.send(if accept { DownloadCtl::Accept } else { DownloadCtl::Decline }) {
-        return error(409, "the download is no longer waiting");
+        return error(409, "下载已不再等待");
     }
     if accept {
         d.state = "running";
@@ -1593,13 +1593,13 @@ pub fn download_cancel_for(state: &AppState, body: &[u8]) -> (u16, Value) {
         return reply;
     }
     if d.state == "running" && installing_step(&d.step) {
-        return error(409, "the profile is being installed and can't be cancelled now");
+        return error(409, "配置文件正在安装，此时无法取消");
     }
     if !matches!(d.state, "confirm" | "running") {
-        return error(409, "no download is running");
+        return error(409, "没有正在进行的下载");
     }
     if !inner.control.send(DownloadCtl::Cancel) {
-        return error(409, "the download cannot be cancelled now");
+        return error(409, "此时无法取消下载");
     }
     d.state = "cancelling";
     d.error = Some("cancelled".into());
@@ -1615,7 +1615,7 @@ fn arm_preview_timeout(inner: &Arc<Inner>) {
         let mut d = inner.download.lock().unwrap();
         if d.state == "confirm" && d.started_at == started && inner.control.send(DownloadCtl::PreviewTimeout) {
             d.state = "cancelling";
-            d.error = Some("not confirmed within 2 minutes".into());
+            d.error = Some("2 分钟内未确认".into());
         }
     });
 }
@@ -1639,7 +1639,7 @@ pub fn download_dismiss_for(state: &AppState, body: &[u8]) -> (u16, Value) {
         return reply;
     }
     if !d.is_finished() && !d.state.is_empty() && d.state != "idle" {
-        return error(409, "a download is still in progress");
+        return error(409, "仍有下载正在进行");
     }
     *d = Download::default();
     (200, json!({"ok": true, "data": d.view()}))
@@ -1650,7 +1650,7 @@ fn download_selection(body: &[u8]) -> Result<Value, (u16, Value)> {
     if body.is_empty() {
         return Ok(json!({}));
     }
-    serde_json::from_slice(body).map_err(|_| error(400, "invalid JSON"))
+    serde_json::from_slice(body).map_err(|_| error(400, "无效的 JSON"))
 }
 
 fn check_download_selection(instance: u64, download: &Download, body: &Value) -> Result<(), (u16, Value)> {
@@ -1658,10 +1658,10 @@ fn check_download_selection(instance: u64, download: &Download, body: &Value) ->
         return Ok(());
     };
     let (Some(agent), Some(started)) = (expected["agent_instance"].as_u64(), expected["started_at"].as_u64()) else {
-        return Err(error(400, "expected download must include agent_instance and started_at"));
+        return Err(error(400, "预期下载信息必须包含 agent_instance 和 started_at"));
     };
     if agent != instance || started != download.started_at {
-        return Err(error(409, "the download changed; review its current status before continuing"));
+        return Err(error(409, "下载已更改，继续前请先查看当前状态"));
     }
     Ok(())
 }
@@ -1781,13 +1781,13 @@ pub fn notifications(state: &AppState) -> (u16, Value) {
 /// restarts the retry loop, including receipts that had given up.
 pub fn notifications_process(state: &AppState) -> (u16, Value) {
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     if state.esim.reloading() {
         return reloading_reply();
     }
     if !data_connected() {
-        return error(409, "the router has no mobile data connection");
+        return error(409, "路由器没有移动数据连接");
     }
     let Some(guard) = state.esim.acquire() else {
         return busy();
@@ -1806,7 +1806,7 @@ pub fn notifications_process(state: &AppState) -> (u16, Value) {
         ensure_receipt_retry(&worker);
     });
     if spawned.is_err() {
-        return error(503, "cannot start the receipt thread");
+        return error(503, "无法启动回执线程");
     }
     (202, json!({"ok": true, "data": inner.receipts.lock().unwrap().view(true)}))
 }
@@ -1815,7 +1815,7 @@ pub fn notifications_process(state: &AppState) -> (u16, Value) {
 /// clears it.
 pub fn nickname(state: &AppState, body: &[u8]) -> (u16, Value) {
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     let iccid = match iccid_body(body) {
         Ok(i) => i,
@@ -1823,7 +1823,7 @@ pub fn nickname(state: &AppState, body: &[u8]) -> (u16, Value) {
     };
     let parsed: Value = serde_json::from_slice(body).unwrap_or_default();
     let Some(raw) = parsed.get("nickname").and_then(Value::as_str) else {
-        return error(400, "nickname must be a string (\"\" clears it)");
+        return error(400, "昵称必须是字符串（传空字符串可清除）");
     };
     let name = raw.trim().to_string();
     if let Err(message) = check_nickname(&name) {
@@ -1843,7 +1843,7 @@ pub fn nickname(state: &AppState, body: &[u8]) -> (u16, Value) {
         Err(e) => return e.reply(),
     };
     if !list.iter().any(|p| p["iccid"] == iccid.as_str()) {
-        return error(404, "no profile with this ICCID on the eSIM");
+        return error(404, "eSIM 上没有此 ICCID 的配置");
     }
     let mut args = vec!["profile", "nickname", iccid.as_str()];
     if !name.is_empty() {
@@ -1873,10 +1873,10 @@ pub fn nickname(state: &AppState, body: &[u8]) -> (u16, Value) {
 
 fn check_nickname(name: &str) -> Result<(), &'static str> {
     if name.len() > NICKNAME_MAX_BYTES {
-        return Err("nickname is longer than 64 bytes");
+        return Err("昵称超过 64 字节");
     }
     if name.chars().any(char::is_control) {
-        return Err("nickname contains control characters");
+        return Err("昵称包含控制字符");
     }
     Ok(())
 }
@@ -1891,13 +1891,13 @@ fn enabled_iccid(list: &[Value]) -> Option<String> {
 /// The profile must exist, be disabled and be an ordinary operator profile.
 fn check_enable_target(list: &[Value], iccid: &str) -> Result<(), (u16, &'static str)> {
     let Some(target) = list.iter().find(|p| p["iccid"] == iccid) else {
-        return Err((404, "no profile with this ICCID on the eSIM"));
+        return Err((404, "eSIM 上没有此 ICCID 的配置"));
     };
     if target["state"] != "disabled" {
-        return Err((409, "this profile is already enabled"));
+        return Err((409, "此配置已启用"));
     }
     if target["class"] != "operational" {
-        return Err((400, "only operational profiles can be enabled here"));
+        return Err((400, "此处只能启用可用状态的配置"));
     }
     Ok(())
 }
@@ -1905,10 +1905,10 @@ fn check_enable_target(list: &[Value], iccid: &str) -> Result<(), (u16, &'static
 /// Deleting is permanent; never the profile the router is using.
 fn check_delete_target(list: &[Value], iccid: &str) -> Result<(), (u16, &'static str)> {
     let Some(target) = list.iter().find(|p| p["iccid"] == iccid) else {
-        return Err((404, "no profile with this ICCID on the eSIM"));
+        return Err((404, "eSIM 上没有此 ICCID 的配置"));
     };
     if target["state"] != "disabled" {
-        return Err((409, "switch to another profile before deleting the active one"));
+        return Err((409, "删除当前启用的配置前，请先切换到其他配置"));
     }
     Ok(())
 }
@@ -1916,7 +1916,7 @@ fn check_delete_target(list: &[Value], iccid: &str) -> Result<(), (u16, &'static
 /// `LPA:1$<SM-DP+ address>$<matching ID>[$<OID>[$<confirmation code required flag>]]`
 /// (SGP.22 §4.1). Returns whether the code says a confirmation code is required.
 fn check_activation_code(code: &str) -> Result<bool, &'static str> {
-    const BAD: &str = "activation code must look like LPA:1$<server>$<matching ID>";
+    const BAD: &str = "激活码格式应为 LPA:1$<server>$<matching ID>";
     if code.len() > 512 || code.chars().any(|c| c.is_control() || c.is_whitespace()) {
         return Err(BAD);
     }
@@ -1932,11 +1932,11 @@ fn check_activation_code(code: &str) -> Result<bool, &'static str> {
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b':'));
     if !server_ok || parts[1].len() > 255 {
-        return Err("the activation code's server address is invalid");
+        return Err("激活码的服务器地址无效");
     }
     // Matching IDs use only letters, digits and '-' (SGP.22 section 4.1).
     if !parts[2].bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-') {
-        return Err("the activation code's matching ID is invalid");
+        return Err("激活码的匹配 ID 无效");
     }
     Ok(parts.get(4) == Some(&"1"))
 }
@@ -1947,24 +1947,24 @@ fn check_activation_code(code: &str) -> Result<bool, &'static str> {
 pub fn decode_qr_image(state: &AppState, image: Vec<u8>) -> (u16, Value) {
     crate::httpd::gate::debug_assert_may_block();
     if !state.auth.has_password() {
-        return error(403, "agent password required");
+        return error(403, "需要 Agent 密码");
     }
     let payloads = match qr_decode::codes(image, QR_DECODE_LIMIT) {
         Ok(payloads) => payloads,
         Err(qr_decode::Fail::NotImage) => {
-            return error(415, "choose a JPEG or PNG QR image")
+            return error(415, "请选择 JPEG 或 PNG 格式的二维码图片")
         }
         Err(qr_decode::Fail::TooLarge) => {
-            return error(413, "the QR image is too large; choose a smaller image")
+            return error(413, "二维码图片过大，请选择更小的图片")
         }
         Err(qr_decode::Fail::Busy) => {
-            return error(503, "the router is already reading another QR image")
+            return error(503, "路由器正在读取另一张二维码图片")
         }
         Err(qr_decode::Fail::TimedOut) => {
-            return error(504, "QR reading timed out; crop closer to the code and try again")
+            return error(504, "二维码读取超时，请裁剪到更靠近二维码的位置后重试")
         }
         Err(qr_decode::Fail::Unreadable) => {
-            return error(422, "the QR image could not be read; choose a clearer image")
+            return error(422, "无法读取二维码图片，请选择更清晰的图片")
         }
     };
     match activation_from_payloads(&payloads) {
@@ -1995,9 +1995,9 @@ fn activation_from_payloads(payloads: &[String]) -> Result<(String, bool), &'sta
         }
     }
     match found.len() {
-        0 => Err("no eSIM activation code was found in this QR image"),
+        0 => Err("此二维码图片中未找到 eSIM 激活码"),
         1 => Ok(found.pop().expect("one checked activation code")),
-        _ => Err("multiple eSIM activation codes were found; choose an image with one code"),
+        _ => Err("找到多个 eSIM 激活码，请选择只包含一个激活码的图片"),
     }
 }
 
@@ -2095,11 +2095,11 @@ pub(crate) fn card_target() -> Result<(u32, u8), String> {
         let v = std::env::var(name).unwrap_or_else(|_| default.into());
         Some(v).filter(|v| !v.is_empty() && v.bytes().all(|b| b.is_ascii_digit())).and_then(|v| v.parse::<u32>().ok())
     };
-    let node = number("ZTE_AGENT_ESIM_QRTR_NODE", "3").ok_or("ZTE_AGENT_ESIM_QRTR_NODE must be a number")?;
+    let node = number("ZTE_AGENT_ESIM_QRTR_NODE", "3").ok_or("ZTE_AGENT_ESIM_QRTR_NODE 必须为数字")?;
     let slot = number("ZTE_AGENT_ESIM_UIM_SLOT", "1")
         .and_then(|s| u8::try_from(s).ok())
         .filter(|s| *s >= 1)
-        .ok_or("ZTE_AGENT_ESIM_UIM_SLOT must be 1-255")?;
+        .ok_or("ZTE_AGENT_ESIM_UIM_SLOT 必须为 1-255")?;
     Ok((node, slot))
 }
 
@@ -2117,7 +2117,7 @@ fn download(
     let (node, slot) = card_target().map_err(CardError::Config)?;
     // A card command that outlived its limit may still hold the card: nothing else may start.
     if CARD_WORKER_RUNNING.load(Ordering::SeqCst) {
-        return Err(CardError::NotStarted("the previous eSIM command is still finishing".into()));
+        return Err(CardError::NotStarted("上一条 eSIM 命令仍在执行".into()));
     }
     let code = crate::esim_download::parse_activation_code(code).map_err(|e| CardError::Failed(e.to_string()))?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -2139,7 +2139,7 @@ fn download(
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         crate::esim_download::download(&mut card, &mut http, &code, confirmation, preview, &rx, &mut report, deadline)
     }))
-    .unwrap_or_else(|_| Err("the eSIM download stopped unexpectedly".into()))
+    .unwrap_or_else(|_| Err("eSIM 下载意外停止".into()))
     .map_err(CardError::Failed)
 }
 
@@ -2157,7 +2157,7 @@ fn card(args: &[&str], limit: Duration) -> Result<Value, CardError> {
     crate::httpd::gate::debug_assert_may_block();
     let (node, slot) = card_target().map_err(CardError::Config)?;
     if CARD_WORKER_RUNNING.swap(true, Ordering::SeqCst) {
-        return Err(CardError::NotStarted("the previous eSIM command is still finishing".into()));
+        return Err(CardError::NotStarted("上一条 eSIM 命令仍在执行".into()));
     }
     // Clears the flag however the worker ends, panics included.
     struct Running;
@@ -2177,7 +2177,7 @@ fn card(args: &[&str], limit: Duration) -> Result<Value, CardError> {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             crate::esim_native::run(&refs, node, slot, limit)
         }))
-        .unwrap_or_else(|_| Err("the eSIM worker stopped unexpectedly".into()));
+        .unwrap_or_else(|_| Err("eSIM 工作线程意外停止".into()));
         // The card session is closed: release the claims before the caller can start the next
         // command, so it never sees "still finishing".
         drop(lock);
@@ -2186,7 +2186,7 @@ fn card(args: &[&str], limit: Duration) -> Result<Value, CardError> {
     });
     if spawned.is_err() {
         // The closure (and with it `running`) was dropped, which cleared the flag.
-        return Err(CardError::NotStarted("could not start the eSIM worker".into()));
+        return Err(CardError::NotStarted("无法启动 eSIM 工作线程".into()));
     }
     let op = args.iter().take(2).copied().collect::<Vec<_>>().join(" ");
     match rx.recv_timeout(limit + WORKER_GRACE) {
@@ -2197,11 +2197,11 @@ fn card(args: &[&str], limit: Duration) -> Result<Value, CardError> {
         }
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
             eprintln!("[esim] {op}: worker stopped without an answer");
-            Err(CardError::Failed("the eSIM worker stopped unexpectedly".into()))
+            Err(CardError::Failed("eSIM 工作线程意外停止".into()))
         }
         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
             eprintln!("[esim] {op} did not finish within {} s", limit.as_secs());
-            Err(CardError::Failed(format!("eSIM command did not finish within {} s", limit.as_secs())))
+            Err(CardError::Failed(format!("eSIM 命令未在 {} 秒内完成", limit.as_secs())))
         }
     }
 }
@@ -2308,14 +2308,14 @@ mod tests {
     fn qr_payloads_report_missing_multiple_and_confirmation_codes() {
         assert_eq!(
             activation_from_payloads(&["WIFI:T:WPA;S:Router;P:secret;;".to_string()]),
-            Err("no eSIM activation code was found in this QR image")
+            Err("此二维码图片中未找到 eSIM 激活码")
         );
         assert_eq!(
             activation_from_payloads(&[
                 "LPA:1$one.example$FAKE-1".to_string(),
                 "LPA:1$two.example$FAKE-2".to_string(),
             ]),
-            Err("multiple eSIM activation codes were found; choose an image with one code")
+            Err("找到多个 eSIM 激活码，请选择只包含一个激活码的图片")
         );
         assert_eq!(
             activation_from_payloads(&[

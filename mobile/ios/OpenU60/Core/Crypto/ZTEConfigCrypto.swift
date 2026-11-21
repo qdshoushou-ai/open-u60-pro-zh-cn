@@ -205,10 +205,10 @@ enum ZTEConfigCrypto {
     static func allCandidateKeys(serial: String? = nil, signature: String? = nil) -> [KnownKey] {
         var keys: [KnownKey] = []
         if let sig = signature, !sig.isEmpty {
-            keys.append(KnownKey(description: "Derived from signature", keyBytes: keyFromSignature(sig)))
+            keys.append(KnownKey(description: "由签名派生", keyBytes: keyFromSignature(sig)))
         }
         if let ser = serial, !ser.isEmpty {
-            keys.append(KnownKey(description: "Derived from serial \(ser)", keyBytes: keyFromSerial(ser)))
+            keys.append(KnownKey(description: "由序列号 \(ser) 派生", keyBytes: keyFromSerial(ser)))
         }
         keys.append(contentsOf: ConfigConstants.knownKeys)
         return keys

@@ -286,7 +286,7 @@ async fn a_photo_is_read_on_the_router() {
 async fn uploads_are_checked_and_refusals_read_as_the_app() {
     let _turn = UPLOADS.lock().await;
     let (c, cookie, _) = signed_in(173).await;
-    let no_data = (409, json!({"ok": false, "error": "the router has no mobile data connection; downloads use the router's own internet"}));
+    let no_data = (409, json!({"ok": false, "error": "路由器没有移动数据连接；下载将使用路由器自身的网络"}));
     let _dev = device::set(&c.app, device_with(vec![("/api/esim/download", no_data)], "disconnected"));
     let (csrf, token) = entry(&c, peer(173, 2), &cookie).await;
     let body = fields(&csrf, &token, CODE, "", None);
@@ -342,7 +342,7 @@ async fn uploads_are_checked_and_refusals_read_as_the_app() {
     assert!(r.status == 409 && r.text().contains("Can’t start this download"), "{}", r.text());
     assert_eq!(calls(&c).len(), 1);
     // Busy: the agent's 409 reads as the app's line.
-    let busy = (409, json!({"ok": false, "error": "eSIM manager busy; retry shortly"}));
+    let busy = (409, json!({"ok": false, "error": "eSIM 管理器繁忙，请稍后重试"}));
     let _dev = device::set(&c.app, device_with(vec![("/api/esim/download", busy)], "connected"));
     let (_, token) = entry(&c, peer(173, 5), &cookie).await;
     let r = upload(&c, peer(173, 5), &cookie, &fields(&csrf, &token, CODE, "", None)).await;
@@ -463,7 +463,7 @@ async fn the_download_card_follows_the_app() {
     let html = get_with(&c, DL, peer(174, 7), &cookie).await.text();
     assert!(html.contains("<p>es9p_authenticate_client: unknown code … for …</p>") && !html.contains("FAKE") && !html.contains("example.com"), "{html}");
     // Cancelled by the 2-minute limit.
-    let _f = fake::set(&c.app, json!({"state": "cancelled", "error": "not confirmed within 2 minutes"}));
+    let _f = fake::set(&c.app, json!({"state": "cancelled", "error": "2 分钟内未确认"}));
     let html = get_with(&c, DL, peer(174, 7), &cookie).await.text();
     assert!(html.contains("<b>Download cancelled</b>") && html.contains("It wasn’t confirmed within 2 minutes."), "{html}");
     // eSIM Profiles' card opens the download as it is.
@@ -510,7 +510,7 @@ async fn install_and_cancel_send_once() {
     }
     // The agent refuses: its words, "Check status"; a replay lands there too.
     let mut d = d.clone();
-    d.replies.push(("/api/esim/download/confirm", (409, json!({"ok": false, "error": "the download is no longer waiting"}))));
+    d.replies.push(("/api/esim/download/confirm", (409, json!({"ok": false, "error": "下载已不再等待"}))));
     let _dev = device::set(&c.app, d);
     let once = get_with(&c, ADD, peer(175, 6), &cookie).await.input("once");
     let body = format!("csrf={csrf}&once={once}");

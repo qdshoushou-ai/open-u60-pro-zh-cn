@@ -27,7 +27,7 @@ pub fn build_agent(timeout_ms: u32) -> Result<Client, String> {
         .timeout(timeout)
         .pool_idle_timeout(Some(AGENT_IDLE_MAX))
         .build()
-        .map_err(|error| format!("DoH client setup failed: {error}"))
+        .map_err(|error| format!("DoH 客户端初始化失败：{error}"))
 }
 
 /// One HTTP/2-capable client reused across upstream queries.
@@ -76,7 +76,7 @@ impl SharedAgent {
         self.last_used = now;
         self.agent
             .clone()
-            .ok_or_else(|| "DoH client is unavailable".to_string())
+            .ok_or_else(|| "DoH 客户端不可用".to_string())
     }
 
     /// Apply a new request timeout; the client is rebuilt only when it changed.
@@ -109,12 +109,12 @@ pub fn query_doh(agent: &Client, dns_query: &[u8], url: &str) -> Result<Vec<u8>,
         .header(reqwest::header::ACCEPT, "application/dns-message")
         .body(dns_query.to_vec())
         .send()
-        .map_err(|e| format!("DoH request failed: {e}"))?;
+        .map_err(|e| format!("DoH 请求失败：{e}"))?;
     let body = response
         .error_for_status()
-        .map_err(|e| format!("DoH request failed: {e}"))?
+        .map_err(|e| format!("DoH 请求失败：{e}"))?
         .bytes()
-        .map_err(|e| format!("DoH read failed: {e}"))?;
+        .map_err(|e| format!("DoH 读取失败：{e}"))?;
     Ok(body.to_vec())
 }
 
@@ -134,7 +134,7 @@ impl DotClient {
         let tls =
             ClientConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
                 .with_safe_default_protocol_versions()
-                .map_err(|error| format!("DoT TLS setup failed: {error}"))?
+                .map_err(|error| format!("DoT TLS 初始化失败：{error}"))?
                 .with_root_certificates(roots)
                 .with_no_client_auth();
         Ok(Self {
@@ -166,7 +166,7 @@ impl DotClient {
         server_name: &str,
     ) -> Result<Vec<u8>, String> {
         if dns_query.len() > u16::MAX as usize {
-            return Err("DoT query is too large".to_string());
+            return Err("DoT 查询过大".to_string());
         }
         if self.stream.is_none()
             || self.connected_endpoint != endpoint
@@ -180,7 +180,7 @@ impl DotClient {
                 self.stream = None;
                 self.connect(endpoint, server_name)?;
                 self.query_connected(dns_query)
-                    .map_err(|second| format!("{second}; retry after {first}"))
+                    .map_err(|second| format!("{second}；在 {first} 后重试"))
             }
         }
     }
@@ -189,10 +189,10 @@ impl DotClient {
         let timeout = Duration::from_millis(u64::from(self.timeout_ms));
         let addresses: Vec<_> = endpoint
             .to_socket_addrs()
-            .map_err(|error| format!("DoT endpoint {endpoint} could not be resolved: {error}"))?
+            .map_err(|error| format!("DoT 端点 {endpoint} 无法解析：{error}"))?
             .collect();
         if addresses.is_empty() {
-            return Err(format!("DoT endpoint {endpoint} has no address"));
+            return Err(format!("DoT 端点 {endpoint} 没有地址"));
         }
         let mut last_error = None;
         let mut tcp = None;
@@ -207,18 +207,18 @@ impl DotClient {
         }
         let tcp = tcp.ok_or_else(|| {
             format!(
-                "DoT connection to {endpoint} failed: {}",
+                "连接 DoT 端点 {endpoint} 失败：{}",
                 last_error.map_or_else(|| "no address".to_string(), |error| error.to_string())
             )
         })?;
         tcp.set_read_timeout(Some(timeout))
-            .map_err(|error| format!("DoT read timeout: {error}"))?;
+            .map_err(|error| format!("DoT 读取超时：{error}"))?;
         tcp.set_write_timeout(Some(timeout))
-            .map_err(|error| format!("DoT write timeout: {error}"))?;
+            .map_err(|error| format!("DoT 写入超时：{error}"))?;
         let name = ServerName::try_from(server_name.to_owned())
-            .map_err(|_| "DoT TLS server name is invalid".to_string())?;
+            .map_err(|_| "DoT TLS 服务器名称无效".to_string())?;
         let connection = ClientConnection::new(Arc::clone(&self.tls), name)
-            .map_err(|error| format!("DoT TLS connection failed: {error}"))?;
+            .map_err(|error| format!("DoT TLS 连接失败：{error}"))?;
         self.stream = Some(StreamOwned::new(connection, tcp));
         self.connected_endpoint = endpoint.to_string();
         self.connected_server_name = server_name.to_string();
@@ -229,24 +229,24 @@ impl DotClient {
         let stream = self
             .stream
             .as_mut()
-            .ok_or_else(|| "DoT connection is unavailable".to_string())?;
+            .ok_or_else(|| "DoT 连接不可用".to_string())?;
         stream
             .write_all(&(dns_query.len() as u16).to_be_bytes())
             .and_then(|_| stream.write_all(dns_query))
             .and_then(|_| stream.flush())
-            .map_err(|error| format!("DoT write failed: {error}"))?;
+            .map_err(|error| format!("DoT 写入失败：{error}"))?;
         let mut length = [0u8; 2];
         stream
             .read_exact(&mut length)
-            .map_err(|error| format!("DoT response length failed: {error}"))?;
+            .map_err(|error| format!("DoT 响应长度读取失败：{error}"))?;
         let length = u16::from_be_bytes(length) as usize;
         if length < 12 {
-            return Err("DoT returned a truncated DNS response".to_string());
+            return Err("DoT 返回了截断的 DNS 响应".to_string());
         }
         let mut response = vec![0; length];
         stream
             .read_exact(&mut response)
-            .map_err(|error| format!("DoT response failed: {error}"))?;
+            .map_err(|error| format!("DoT 响应失败：{error}"))?;
         Ok(response)
     }
 }

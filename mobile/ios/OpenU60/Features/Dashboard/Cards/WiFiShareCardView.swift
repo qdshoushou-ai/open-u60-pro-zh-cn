@@ -15,8 +15,8 @@ struct WiFiShareCardView: View {
     @State private var qrImage: UIImage?
 
     enum Tab: String, CaseIterable {
-        case main = "Main"
-        case guest = "Guest"
+        case main = "主网络"
+        case guest = "访客网络"
     }
 
     private var availableTabs: [Tab] {
@@ -65,7 +65,7 @@ struct WiFiShareCardView: View {
                     withAnimation { isExpanded.toggle() }
                 } label: {
                     HStack {
-                        Label("WiFi Credentials", systemImage: "key.radiowaves.forward")
+                        Label("WiFi 凭据", systemImage: "key.radiowaves.forward")
                             .font(.headline)
                         Spacer()
                         Image(systemName: "chevron.up")
@@ -121,7 +121,7 @@ struct WiFiShareCardView: View {
                                     Image(systemName: showPassword ? "eye.slash" : "eye")
                                         .foregroundStyle(.secondary)
                                 }
-                                .accessibilityLabel(showPassword ? "Hide password" : "Show password")
+                                .accessibilityLabel(showPassword ? "隐藏密码" : "显示密码")
 
                                 Button {
                                     UIPasteboard.general.string = currentPassword
@@ -129,7 +129,7 @@ struct WiFiShareCardView: View {
                                     Image(systemName: "doc.on.doc")
                                         .foregroundStyle(.secondary)
                                 }
-                                .accessibilityLabel("Copy password")
+                                .accessibilityLabel("复制密码")
                             }
 
                             if let qrImage {
@@ -140,7 +140,7 @@ struct WiFiShareCardView: View {
                                     .frame(maxWidth: 180, maxHeight: 180)
                             }
 
-                            Text("Scan with any phone camera")
+                            Text("用任意手机相机扫描")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
